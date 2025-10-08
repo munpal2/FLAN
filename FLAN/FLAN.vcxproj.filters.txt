@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="소스 파일\test">
+      <UniqueIdentifier>{62e32ed7-3e60-4077-b070-a943d4c7e575}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\test">
+      <UniqueIdentifier>{275b994b-169e-4505-a1ae-582dd36979a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="리소스 파일\test">
+      <UniqueIdentifier>{502e57a6-bc2f-402a-a4ee-0e8acd446410}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="리소스 파일\docs">
+      <UniqueIdentifier>{2dfaec7f-bebd-4b82-ad79-06c8c85a225f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="hashtable.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="tokenizer.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="test.c">
+      <Filter>소스 파일\test</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hashtable.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="tokenizer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="test.h">
+      <Filter>헤더 파일\test</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="test\test.txt">
+      <Filter>리소스 파일\test</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\token_spec.md">
+      <Filter>리소스 파일\docs</Filter>
+    </None>
+    <None Include="docs\AST_spec.md">
+      <Filter>리소스 파일\docs</Filter>
+    </None>
+  </ItemGroup>
+</Project>
