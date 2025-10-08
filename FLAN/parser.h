@@ -13,7 +13,9 @@ typedef enum AST_type {
 	AST_LTE,   AST_GTE,     AST_EQ,      AST_NEQ,     AST_BAND,
 	AST_BOR,   AST_BXOR,    AST_OR,      AST_AND,     AST_ADDI,
 	AST_SUBI,  AST_MULI,    AST_DIVI,    AST_MODI,    AST_ANDI,
-	AST_ORI,   AST_XORI,    AST_LSHIFTI, AST_RSHIFTI, AST_WHILE
+	AST_ORI,   AST_XORI,    AST_LSHIFTI, AST_RSHIFTI, AST_WHILE,
+	AST_IF,    AST_FDECL,   AST_BLOCK,   AST_PARAM,   AST_RETURN,
+	AST_IDX,   AST_ARG,     AST_CALL
 } AST_type;
 
 extern const char* AST_strty[];

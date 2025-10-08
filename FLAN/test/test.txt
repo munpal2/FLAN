@@ -1,4 +1,14 @@
-while (a == 0)
+func add(int a, int b): ptr of uint
 {
-	a = a + 3;
+	return a + b;
+};
+
+decl const uint a;
+decl arr(5U) of arr(10U) of int foo;
+
+foo[a] += 3;
+if (foo[0] != 0)
+{
+	foo[4 * 3] += 4 * 8;
+	foo[add(1, 2)] = add(100, 2000);
 }

@@ -21,7 +21,9 @@ const char* AST_strty[] = {"AST_CONJ",  "AST_DECL",    "AST_CONST",   "AST_PTROF
                            "AST_LTE",   "AST_GTE",     "AST_EQ",      "AST_NEQ",     "AST_BAND",
 	                       "AST_BOR",   "AST_BXOR",    "AST_OR",      "AST_AND",     "AST_ADDI",
 	                       "AST_SUBI",  "AST_MULI",    "AST_DIVI",    "AST_MODI",    "AST_ANDI",
-	                       "AST_ORI",   "AST_XORI",    "AST_LSHIFTI", "AST_RSHIFTI", "AST_WHILE"};
+	                       "AST_ORI",   "AST_XORI",    "AST_LSHIFTI", "AST_RSHIFTI", "AST_WHILE",
+                           "AST_IF",    "AST_FDECL",   "AST_BLOCK",   "AST_PARAM",   "AST_RETURN",
+                           "AST_IDX",   "AST_ARG",     "AST_CALL"};
 
 void psr_init(parser* psr, variable_arr* processed_tokens)
 {
@@ -225,13 +227,36 @@ handle_err:
 }
 
 /*
+args -> expr, args
+        expr
+*/
+FIRST(args) = { TK_ID,   TK_STR,   TK_FLOAT, TK_UINT,       TK_INT,
+				TK_TRUE, TK_FALSE, TK_MINUS, TK_OPEN_PAREN, TK_INC,
+				TK_DEC,  TK_NOT,   TK_BNOT,  TK_MUL,        TK_BAND };
+static AST_node* parse_args(parser* psr)
+{
+	AST_node* ret = create_node(AST_ARG, NULL);
+	ret->children[0] = parse_expr(psr);
+	if (psr->lookahead->type == TK_COMMA)
+	{
+		psr_next(psr);
+		ret->children[1] = parse_args(psr);
+	}
+	return ret;
+}
+
+/*
 postfix_chain -> .id postfix_chain
                  ->id postfix_chain
 				 ++ postfix_chain
 				 -- postfix_chain
+				 [expr] postfix_chain
+				 (args) postfix_chain
+				 () postfix_chain
 				 epsilon
 */
-FIRST(postfix_chain) = { TK_DOT, TK_INC, TK_DEC, TK_ARROW };
+FIRST(postfix_chain) = { TK_DOT, TK_INC, TK_DEC, TK_ARROW, TK_OPEN_PAREN,
+                         TK_OPEN_BRACKET};
 
 static AST_node* parse_postfix_chain(parser* psr, AST_node* base) //postfix_chainÀÌ ºÙ´Â element 
 {
@@ -254,6 +279,27 @@ static AST_node* parse_postfix_chain(parser* psr, AST_node* base) //postfix_chai
 			new_node->children[0] = base;
 			new_node->children[1] = create_node(AST_ID, psr->lookahead->attr);
 			psr_expect(psr, TK_ID);
+			base = new_node;
+			break;
+		}
+		case TK_OPEN_BRACKET:
+		{
+			AST_node* new_node = create_node(AST_IDX, NULL);
+			psr_next(psr);
+			new_node->children[0] = base;
+			new_node->children[1] = parse_expr(psr);
+			psr_expect(psr, TK_CLOSE_BRACKET);
+			base = new_node;
+			break;
+		}
+		case TK_OPEN_PAREN:
+		{
+			AST_node* new_node = create_node(AST_CALL, NULL);
+			psr_next(psr);
+			new_node->children[0] = base;
+			if (in_FIRST(psr->lookahead->type, args))
+				new_node->children[1] = parse_args(psr);
+			psr_expect(psr, TK_CLOSE_PAREN);
 			base = new_node;
 			break;
 		}
@@ -306,8 +352,7 @@ unary -> prefix_chain primary
 */
 FIRST(prefix_chain) = { TK_ID,   TK_STR,   TK_FLOAT, TK_UINT,       TK_INT,
                         TK_TRUE, TK_FALSE, TK_MINUS, TK_OPEN_PAREN, TK_INC,
-	                    TK_DEC,  TK_MINUS, TK_NOT,   TK_BNOT,       TK_MUL,
-	                    TK_BAND };
+	                    TK_DEC,  TK_NOT,   TK_BNOT,  TK_MUL,        TK_BAND };
 
 static AST_node* parse_prefix_chain(parser* psr)
 {
@@ -413,8 +458,7 @@ expr -> lassoc = lassoc
 */
 FIRST(expr) = { TK_ID,   TK_STR,   TK_FLOAT, TK_UINT,       TK_INT,
 			    TK_TRUE, TK_FALSE, TK_MINUS, TK_OPEN_PAREN, TK_INC,
-				TK_DEC,  TK_MINUS, TK_NOT,   TK_BNOT,       TK_MUL,
-				TK_BAND };
+				TK_DEC,  TK_NOT,   TK_BNOT,  TK_MUL,        TK_BAND };
 
 static AST_node* parse_expr(parser* psr)
 {
@@ -444,7 +488,8 @@ stmt -> { stmts }
 static AST_node* parse_block_stmt(parser* psr)
 {
 	psr_next(psr);
-	AST_node* new_node = parse_stmts(psr);
+	AST_node* new_node = create_node(AST_BLOCK, NULL);
+	new_node->children[0] = parse_stmts(psr);
 	psr_expect(psr, TK_CLOSE_BRACE);
 	return new_node;
 }
@@ -460,13 +505,98 @@ static AST_node* parse_while_stmt(parser* psr)
 	return new_node;
 }
 
+static AST_node* parse_if_stmt(parser* psr)
+{
+	psr_next(psr);
+	AST_node* new_node = create_node(AST_IF, NULL);
+	psr_expect(psr, TK_OPEN_PAREN);
+	new_node->children[0] = parse_expr(psr);
+	psr_expect(psr, TK_CLOSE_PAREN);
+	new_node->children[1] = parse_stmt(psr);
+	if (psr->lookahead->type == TK_ELSE)
+	{
+		psr_next(psr);
+		new_node->children[2] = parse_stmt(psr);
+	}
+	return new_node;
+}
+
+static AST_node* parse_decl_stmt(parser* psr)
+{
+	psr_next(psr);
+	AST_node* new_node = create_node(AST_DECL, NULL);
+	new_node->children[0] = parse_type_expr(psr);
+	new_node->children[1] = create_node(AST_ID, psr->lookahead->attr);
+	psr_expect(psr, TK_ID);
+	return new_node;
+}
+
+/*
+params -> type_expr, params
+          type_expr
+*/
+FIRST(params) = { TK_TYPE, TK_CONST, TK_PTR, TK_ARR };
+static AST_node* parse_params(parser* psr)
+{
+	if (!in_FIRST(psr->lookahead->type, type_expr))
+		return NULL;
+	AST_node* ret = create_node(AST_PARAM, NULL);
+	ret->children[0] = parse_type_expr(psr);
+	ret->children[1] = create_node(AST_ID, psr->lookahead->attr);
+	psr_expect(psr, TK_ID);
+
+	if (psr->lookahead->type == TK_COMMA)
+	{
+		psr_next(psr);
+		ret->children[2] = parse_params(psr);
+	}
+	return ret;
+}
+
+/*
+fdecl_stmt -> func id(params): type_expr stmt
+              func id(): type_expr stmt
+			  func id(params) stmt
+			  func id() stmt
+*/
+static AST_node* parse_fdecl_stmt(parser* psr)
+{
+	psr_next(psr);
+	AST_node* new_node = create_node(AST_FDECL, NULL);
+	new_node->children[0] = create_node(AST_ID, psr->lookahead->attr);
+	psr_expect(psr, TK_ID);
+
+	psr_expect(psr, TK_OPEN_PAREN);
+	if (in_FIRST(psr->lookahead->type, params))
+		new_node->children[1] = parse_params(psr);
+	psr_expect(psr, TK_CLOSE_PAREN);
+
+	if (psr->lookahead->type == TK_COLON)
+	{
+		psr_next(psr);
+		new_node->children[2] = parse_type_expr(psr);
+	}
+	new_node->children[3] = parse_stmt(psr);
+	return new_node;
+}
+
+static AST_node* parse_return_stmt(parser* psr)
+{
+	psr_next(psr);
+	AST_node* return_node = create_node(AST_RETURN, NULL);
+	return_node->children[0] = parse_expr(psr);
+	return return_node;
+}
+
 /*
 stmt -> { stmts }
-     -> while (expr) stmt
-	 -> if (expr) stmt 
-	 -> if (expr) stmt else stmt
-	 -> expr
-	 -> epsilon
+        while (expr) stmt
+	    if (expr) stmt 
+	    if (expr) stmt else stmt
+	    decl type_expr id
+		fdecl_stmt
+	    return expr
+	    epsilon
 */
 static AST_node* parse_stmt(parser* psr)
 {
@@ -478,6 +608,14 @@ static AST_node* parse_stmt(parser* psr)
 			return parse_block_stmt(psr);
 		case TK_WHILE:
 			return parse_while_stmt(psr);
+		case TK_IF:
+			return parse_if_stmt(psr);
+		case TK_DECL:
+			return parse_decl_stmt(psr);
+		case TK_FUNC:
+			return parse_fdecl_stmt(psr);
+		case TK_RETURN:
+			return parse_return_stmt(psr);
 		default:
 			return NULL;
 	}

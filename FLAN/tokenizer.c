@@ -1,6 +1,6 @@
 #include "tokenizer.h"
 
-#define KEYWORDS_COUNT 13
+#define KEYWORDS_COUNT 14
 #define TYPE_COUNT 4
 
 const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",       "TK_STR",          "TK_ID",
@@ -15,14 +15,15 @@ const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",    
                               "TK_GT",          "TK_DOT",        "TK_ARROW",       "TK_TYPE",         "TK_SHLEQ",
                               "TK_SHREQ",       "TK_OREQ",       "TK_ANDEQ",       "TK_XOREQ",        "TK_OPEN_PAREN",
                               "TK_CLOSE_PAREN", "TK_OPEN_BRACE", "TK_CLOSE_BRACE", "TK_OPEN_BRACKET", "TK_CLOSE_BRACKET",
-                              " TK_COMMA",      "TK_AS",         "TK_ARR",         "TK_OF",           "TK_COLON"};
+                              "TK_COMMA",       "TK_AS",         "TK_ARR",         "TK_OF",           "TK_COLON",
+                              "TK_RETURN"};
 
 const char* keywords[KEYWORDS_COUNT] = { "decl",  "for", "while", "if",    "else",
                                          "const", "ptr", "true",  "false", "as", 
-                                         "arr",   "of",  "func"};
+                                         "arr",   "of",  "func",  "return"};
 token_type keyword_types[KEYWORDS_COUNT] = { TK_DECL,  TK_FOR,  TK_WHILE, TK_IF,    TK_ELSE,
                                              TK_CONST, TK_PTR,  TK_TRUE,  TK_FALSE, TK_AS, 
-                                             TK_ARR,   TK_OF,   TK_FUNC };
+                                             TK_ARR,   TK_OF,   TK_FUNC,  TK_RETURN };
 
 const char* types[TYPE_COUNT] = { "int", "float", "bool", "uint" };
 token_type type_types[TYPE_COUNT] = { TK_TYPE, TK_TYPE, TK_TYPE, TK_TYPE };

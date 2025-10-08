@@ -16,7 +16,8 @@ typedef enum token_type
 	TK_GT,          TK_DOT,        TK_ARROW,       TK_TYPE,         TK_SHLEQ,
 	TK_SHREQ,       TK_OREQ,       TK_ANDEQ,       TK_XOREQ,        TK_OPEN_PAREN,
 	TK_CLOSE_PAREN, TK_OPEN_BRACE, TK_CLOSE_BRACE, TK_OPEN_BRACKET, TK_CLOSE_BRACKET,
-	TK_COMMA,       TK_AS,         TK_ARR,         TK_OF,           TK_COLON
+	TK_COMMA,       TK_AS,         TK_ARR,         TK_OF,           TK_COLON,
+	TK_RETURN
 } token_type;
 
 extern const char* token_strty[];
@@ -37,7 +38,7 @@ typedef struct tokenizer
 	file_poller fpl;
 } tokenizer;
 
-void token_create(token* dest, unsigned int type, unsigned int col, char* attr);
+void token_create(token* dest, token_type type, unsigned int col, char* attr);
 bool tknz_init(tokenizer* tknz, const char* filename);
 void tknz_destroy(tokenizer* tknz);
 const variable_arr* tokenize(tokenizer* tknz);

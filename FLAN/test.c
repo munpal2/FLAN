@@ -30,7 +30,7 @@ void test_file(const char* filename) //토크나이저 테스트하깅
 	tknz_init(&tknz, filename);
 	variable_arr* tknzed = tokenize(&tknz);
 
-	//token_show(tknzed);
+	token_show(tknzed);
 	puts(color(0, 220, 0) "\n[[ tokenizing complete! ]]" color_clear);
 
 	parser psr;

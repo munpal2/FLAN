@@ -26,6 +26,7 @@
 | TK_AS        | 61       | as         | 없음       |
 | TK_ARR       | 62       | arr        | 없음       |
 | TK_OF        | 63       | of         | 없음       |
+| TK_RETURN    | 65       | return     | 없음       |_
 
 ## 연산자 토큰
 | 정의명       | 실제 값 | 예시       | [attr]값   |

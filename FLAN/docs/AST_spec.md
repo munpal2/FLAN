@@ -3,7 +3,7 @@
 | 정의명        | 실제 값 | 예시             | [attr]값   | [0]           | [1]           | [2]     | [3]     |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | AST_CONJ      | 0        | stmt1 ; stmt2    | 없음       | 앞 구문       | 뒷 구문       |         |         |
-| AST_DECL      | 1        | int x;           | 없음       | 타입          | 식별자        |         |         |
+| AST_DECL      | 1        | decl int a           | 없음       | 타입          | 식별자        |         |         |
 | AST_CONST     | 2        | const int        | 없음       | 붙는 타입     |               |         |         |
 | AST_PTROF     | 3        | ptr int          | 없음       | 붙는 타입     |               |         |         |
 | AST_ASSIGN    | 4        | x = y            | 없음       | 좌변          | 우변          |         |         |
@@ -57,3 +57,11 @@
 | AST_LSHIFTI   | 52       | x <<= y          | 없음       | 좌측 식       | 우측 식       |         |         |
 | AST_RSHIFTI   | 53       | x >>= y          | 없음       | 좌측 식       | 우측 식       |         |         |
 | AST_WHILE     | 54       | while() \{}       | 없음       | 조건식       | 구문          |         |         |
+| AST_IF        | 55       | if () \{}         | 없음       | 조건식       | 구문          | else 일 때의 구문<br>(NULL 일 수 있음) | |
+| AST_FDECL     | 56       | func foo(int, int): float | 없음 | 함수명 | 매개변수<br>타입 목록<br>(없으면 NULL) | 리턴 타입<br>(없으면 NULL) | 함수 정의 구문
+| AST_BLOCK     | 57       | \{}               | 없음 | 블록 내 구문
+| AST_PARAM     | 58       | (int a, uint b)       | 없음 | 현재 파라미터 타입 | 현재 파라미터 이름 | 다음 파라미터<br>(끝이면 NULL) 
+| AST_RETURN    | 59       | return 0;         | 없음 | 리턴값(표현식) 
+| AST_IDX       | 60       | x[y]              | 없음 | 배열 역할의 식 | 인덱스 역할의 식
+| AST_ARG       | 61       | (233, 45)         | 없음 | 현재 인수 값 | 다음 인수<br>(끝이면 NULL)
+| AST_CALL      | 62       | foo(1, 2)         | 없음 | 함수 역할의 식 | 인수목록<br>(없으면 NULL)_
