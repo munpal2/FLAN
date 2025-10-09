@@ -8,6 +8,7 @@
 | TK_STR       | 3        | "hello"    | "hello"    |
 | TK_ID        | 4        | myVar      | "myVar"    |
 | TK_UINT      | 10       | 123u       | "123"      |
+| TK_CHAR      | 11       | 'c'        | "c"        |
 
 ## 키워드
 | 정의명       | 실제 값 | 예시       | [attr]값   |

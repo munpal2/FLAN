@@ -17,7 +17,7 @@ typedef enum token_type
 	TK_SHREQ,       TK_OREQ,       TK_ANDEQ,       TK_XOREQ,        TK_OPEN_PAREN,
 	TK_CLOSE_PAREN, TK_OPEN_BRACE, TK_CLOSE_BRACE, TK_OPEN_BRACKET, TK_CLOSE_BRACKET,
 	TK_COMMA,       TK_AS,         TK_ARR,         TK_OF,           TK_COLON,
-	TK_RETURN
+	TK_RETURN,      TK_CHAR
 } token_type;
 
 extern const char* token_strty[];

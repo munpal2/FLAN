@@ -118,7 +118,7 @@ void htb_foreach(hash_table* table, void(*fp)(void*))
 		while (cur != NULL)
 		{
 			void* next = *next_ptr(cur);
-			fp(value_ptr(next));
+			fp(value_ptr(cur));
 			cur = next;
 		}
 	}

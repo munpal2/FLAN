@@ -1,7 +1,11 @@
 #include "tokenizer.h"
 
 #define KEYWORDS_COUNT 14
-#define TYPE_COUNT 4
+#define TYPE_COUNT 5
+
+#define push_err(str) do { \
+	printf(color(220, 110, 0) "Line %u: " str, tknz->col); \
+	abort(); } while(0)
 
 const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",       "TK_STR",          "TK_ID",
                               "TK_INVALID",     "TK_CONST",      "TK_PTR",         "TK_FUNC",        "TK_SEMICOLON",
@@ -16,7 +20,7 @@ const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",    
                               "TK_SHREQ",       "TK_OREQ",       "TK_ANDEQ",       "TK_XOREQ",        "TK_OPEN_PAREN",
                               "TK_CLOSE_PAREN", "TK_OPEN_BRACE", "TK_CLOSE_BRACE", "TK_OPEN_BRACKET", "TK_CLOSE_BRACKET",
                               "TK_COMMA",       "TK_AS",         "TK_ARR",         "TK_OF",           "TK_COLON",
-                              "TK_RETURN"};
+                              "TK_RETURN",      "TK_CHAR"};
 
 const char* keywords[KEYWORDS_COUNT] = { "decl",  "for", "while", "if",    "else",
                                          "const", "ptr", "true",  "false", "as", 
@@ -25,8 +29,7 @@ token_type keyword_types[KEYWORDS_COUNT] = { TK_DECL,  TK_FOR,  TK_WHILE, TK_IF,
                                              TK_CONST, TK_PTR,  TK_TRUE,  TK_FALSE, TK_AS, 
                                              TK_ARR,   TK_OF,   TK_FUNC,  TK_RETURN };
 
-const char* types[TYPE_COUNT] = { "int", "float", "bool", "uint" };
-token_type type_types[TYPE_COUNT] = { TK_TYPE, TK_TYPE, TK_TYPE, TK_TYPE };
+const char* types[TYPE_COUNT] = { "int", "float", "bool", "uint", "char" };
 
 const char* specs = ";{}[](),.~:";
 token_type spec_types[] = { TK_SEMICOLON,  TK_OPEN_BRACE,  TK_CLOSE_BRACE, TK_OPEN_BRACKET, TK_CLOSE_BRACKET,
@@ -65,7 +68,7 @@ bool tknz_init(tokenizer* tknz, const char* filename)
     for (size_t i = 0; i < TYPE_COUNT; i++)
     {
         node = htb_insert(&(tknz->token_map), types[i]);
-        token_create(node, type_types[i], 0, types[i]);
+        token_create(node, TK_TYPE, 0, types[i]);
     }
 
     tknz->token_cnt = 0;
@@ -75,7 +78,10 @@ bool tknz_init(tokenizer* tknz, const char* filename)
 
 void tknz_destroy(tokenizer* tknz)
 {
+    for (size_t i = 0; i < tknz->token_cnt; i++)
+        token_destroy(varr_get(&(tknz->result), token, i));
     varr_destroy(&(tknz->result));
+
     close_file(&(tknz->fpl));
     htb_foreach(&(tknz->token_map), token_destroy);
     htb_destroy(&(tknz->token_map));
@@ -117,15 +123,9 @@ static inline int search_str(char ch, const char* str)
     return -1;
 }
 
-static inline token* push_token(tokenizer* tknz, unsigned int type, const char* attr)
+static inline void push_token(tokenizer* tknz, unsigned int type, const char* attr)
 {
     token_create(varr_get(&(tknz->result), token, tknz->token_cnt++), type, tknz->col, attr);
-}
-
-static inline void inform_invalid_token(tokenizer* tknz)
-{
-    printf(color(220, 220, 0) "Line %u: 불완전한 토큰이 있습니다.\n", tknz->col);
-    abort();
 }
 
 static unsigned int assume_numtkty(const char* str)
@@ -219,7 +219,7 @@ const variable_arr* tokenize(tokenizer* tknz)
 
             unsigned int assumed_type = assume_numtkty(str_builder_get(&builder)); //토큰이 정상적인지 (1.2333-33 <- ㅇㅈㄹ이 아닌지) 체크
             if (assumed_type == TK_INVALID)
-                inform_invalid_token(tknz);
+                push_err("비정상적인 리터럴이 있습니다.");
             if (assumed_type == TK_INT && (ch == 'U' || ch == 'u')) //INT토큰 뒤에 U가 붙으면 UINT
             {
                 str_builder_add(&builder, ch);
@@ -278,6 +278,23 @@ const variable_arr* tokenize(tokenizer* tknz)
                 while ((ch = tknz_poll(tknz)) != '"' && ch != EOF)
                     str_builder_add(&builder, ch);
                 push_token(tknz, TK_STR, str_builder_pop(&builder));
+                break;
+            }
+
+            case '\'':
+            {
+                tknz_pop(tknz);
+                str_builder_add(&builder, tknz_poll(tknz));
+                if ((ch = tknz_poll(tknz)) != '\'')
+                    push_err("\'(작은따옴표)안에는 하나의 아스키 문자만 허용됩니다.");
+                push_token(tknz, TK_CHAR, str_builder_pop(&builder));
+                break;
+            }
+
+            case '$':
+            {
+                while ((ch = tknz_poll(tknz)) != '\n' && ch != EOF);
+                tknz->col++;
                 break;
             }
 

@@ -1,0 +1,9 @@
+func calc(ptr of func(int, int): int calculate_func): int
+{
+	return 1;
+};
+
+func repeating_calc(ptr of func(ptr of func(int, int): int): int calc_func) $ㅈㄴ 복잡한 함수
+{
+	return 0;
+}

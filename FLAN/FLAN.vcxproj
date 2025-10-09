@@ -124,22 +124,29 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="hashtable.c" />
+    <ClCompile Include="irgen.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="parser.c" />
+    <ClCompile Include="sementic.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="tokenizer.c" />
     <ClCompile Include="util.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hashtable.h" />
+    <ClInclude Include="irgen.h" />
     <ClInclude Include="parser.h" />
+    <ClInclude Include="sementic.h" />
     <ClInclude Include="test.h" />
     <ClInclude Include="tokenizer.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="test\test.txt" />
-    <Text Include="test\tmp.txt" />
+    <Text Include="test\char.fe" />
+    <Text Include="test\decl.fe" />
+    <Text Include="test\optimize.fe" />
+    <Text Include="test\test.fe" />
+    <Text Include="test\tmp.fe" />
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md" />

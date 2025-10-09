@@ -1,0 +1,5 @@
+$ 변수 선언 테스트용 
+decl int a = 0;
+decl int b = 0, c = 1;
+decl arr(3U) of int arr1 = {1, 2, 3};
+decl arr(2U) of arr(3U) of int arr2 = {{1, 2}, {3, 4}, {5, 6}};
