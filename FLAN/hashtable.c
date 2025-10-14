@@ -77,7 +77,7 @@ void* htb_insert(hash_table* table, const char* key) //성공시 value의 주소, 실패
 	//  capacity 초과 x  ||      ok               ok
 	if (table->size == (table->capacity >> 1) + (table->capacity >> 2) && !htb_resize(table))
 	{
-		puts(color(220, 0, 0) "해시맵을 리사이징하는데 실패했습니다");
+		puts(color_sys_err "해시맵을 리사이징하는데 실패했습니다");
 		abort();
 	}
 

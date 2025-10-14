@@ -1,10 +1,10 @@
 #include "parser.h"
 
 #define push_err(str) do { \
-	printf(color(220, 110, 0) "Line %u: " str, psr->lookahead->col); \
+	printf(color_err "Line %u: " str, psr->lookahead->col); \
 	abort(); } while(0)
 
-#define push_warn(str) printf(color(220, 220, 0) "Line %u: " #str "\n", psr->lookahead->col)
+#define push_warn(str) printf(color_warning "Line %u: " #str "\n", psr->lookahead->col)
 
 #define FIRST(smt) const token_type smt##_FIRST[]
 #define FOLLOW(smt) const token_type smt##_FOLLOW[]
@@ -13,20 +13,21 @@
 #define in_FIRST(target, smt) in_impl((target), smt##_FIRST, LEN(smt##_FIRST))
 #define in_FOLLOW(target, smt) in_impl((target), smt##_FOLLOW, LEN(smt##_FOLLOW))
 
-const char* AST_strty[] = {"AST_CONJ",  "AST_DECL",    "AST_CONST",   "AST_PTROF",   "AST_ASSIGN",
-                           "AST_ADD",   "AST_SUB",     "AST_MUL",     "AST_DIV",     "AST_NEG",
-	                       "AST_REF",   "AST_GETADDR", "AST_ID",      "AST_STR",     "AST_INT",
-	                       "AST_FLOAT", "AST_UINT",    "AST_TYPE",    "AST_CAST",    "AST_ARR",
-	                       "AST_FWINC", "AST_FWDEC",   "AST_BWINC",   "AST_BWDEC",   "AST_DOT",
-                           "AST_ARROW", "AST_TRUE",    "AST_FALSE",   "AST_NOT",     "AST_BNOT", 
-                           "AST_MOD",   "AST_LSHIFT",  "AST_RSHIFT",  "AST_LT",      "AST_GT",
-                           "AST_LTE",   "AST_GTE",     "AST_EQ",      "AST_NEQ",     "AST_BAND",
-	                       "AST_BOR",   "AST_BXOR",    "AST_OR",      "AST_AND",     "AST_ADDI",
-	                       "AST_SUBI",  "AST_MULI",    "AST_DIVI",    "AST_MODI",    "AST_ANDI",
-	                       "AST_ORI",   "AST_XORI",    "AST_LSHIFTI", "AST_RSHIFTI", "AST_WHILE",
-                           "AST_IF",    "AST_FDECL",   "AST_BLOCK",   "AST_PARAM",   "AST_RETURN",
-                           "AST_IDX",   "AST_FUNC",     "AST_CALL",    "AST_FOR",     "AST_CHAR",
-	                       "AST_IDINIT",  "AST_INITEXPR"};
+const char* AST_strty[] = {"AST_CONJ",   "AST_DECL",    "AST_CONST",   "AST_PTROF",   "AST_ASSIGN",
+                           "AST_ADD",    "AST_SUB",     "AST_MUL",     "AST_DIV",     "AST_NEG",
+	                       "AST_REF",    "AST_GETADDR", "AST_ID",      "AST_STR",     "AST_INT",
+	                       "AST_FLOAT",  "AST_UINT",    "AST_TYINT",   "AST_CAST",    "AST_ARR",
+	                       "AST_FWINC",  "AST_FWDEC",   "AST_BWINC",   "AST_BWDEC",   "AST_DOT",
+                           "AST_ARROW",  "AST_TRUE",    "AST_FALSE",   "AST_NOT",     "AST_BNOT", 
+                           "AST_MOD",    "AST_LSHIFT",  "AST_RSHIFT",  "AST_LT",      "AST_GT",
+                           "AST_LTE",    "AST_GTE",     "AST_EQ",      "AST_NEQ",     "AST_BAND",
+	                       "AST_BOR",    "AST_BXOR",    "AST_OR",      "AST_AND",     "AST_ADDI",
+	                       "AST_SUBI",   "AST_MULI",    "AST_DIVI",    "AST_MODI",    "AST_ANDI",
+	                       "AST_ORI",    "AST_XORI",    "AST_LSHIFTI", "AST_RSHIFTI", "AST_WHILE",
+                           "AST_IF",     "AST_FDECL",    "AST_BLOCK",   "AST_PARAM",   "AST_RETURN",
+                           "AST_IDX",    "AST_FUNC",     "AST_CALL",    "AST_FOR",     "AST_CHAR",
+	                       "AST_IDINIT", "AST_INITEXPR", "AST_TYFLOAT", "AST_TYBOOL",  "AST_TYCHAR",
+                           "AST_TYUINT"};
 
 AST_node* AST_node_create(AST_type type, const char* str, unsigned int col)
 {
@@ -73,7 +74,7 @@ void psr_expect(parser* psr, token_type type)
 		psr_next(psr);
 		return;
 	}
-	printf(color(220, 110, 0) "Line %u: %s가 필요하지만 대신 %s가 있습니다.", psr->lookahead->col, token_strty[type], token_strty[psr->lookahead->type]);
+	printf(color_err "Line %u: %s가 필요하지만 대신 %s가 있습니다.", psr->lookahead->col, token_strty[type], token_strty[psr->lookahead->type]);
 	abort();
 }
 
@@ -89,9 +90,15 @@ static unsigned int TK_to_AST(token_type TK_type)
 		case TK_FALSE: return AST_FALSE;
 		case TK_TRUE: return AST_TRUE;
 		case TK_CHAR: return AST_CHAR;
+		case TK_TYINT: return AST_TYINT;
+		case TK_TYFLOAT: return AST_TYFLOAT;
+		case TK_TYUINT: return AST_TYUINT;
+		case TK_TYBOOL: return AST_TYBOOL;
+		case TK_TYCHAR: return AST_TYCHAR;
+
 		default:
 		{
-			puts(color(220, 0, 0) "함수 쓰기전에 생각했나요??");
+			puts(color_sys_err "함수 쓰기전에 생각했나요??");
 			printf("방금 TK_to_AST에 %s가 전달되었지만 TK_to_AST는 %s에 대한 변환을 지원하지 않습니다.", token_strty[TK_type], token_strty[TK_type]);
 			abort();
 		}
@@ -133,16 +140,14 @@ left_conj -> basic separator left_conj
 */
 static AST_node* parse_left_conj(parser* psr, AST_node* (*parse_basic)(parser*), token_type separator)
 {
-	AST_node* basic_node = parse_basic(psr);
+	AST_node* conj_node = node_create_q(AST_CONJ, NULL);
+	conj_node->children[0] = parse_basic(psr);
 	if (psr->lookahead->type == separator)
 	{
 		psr_next(psr);
-		AST_node* conj_node = node_create_q(AST_CONJ, NULL);
-		conj_node->children[0] = basic_node;
 		conj_node->children[1] = parse_left_conj(psr, parse_basic, separator);
-		return conj_node;
 	}
-	return basic_node;
+	return conj_node;
 }
 
 static inline AST_node* parse_type_exprs(parser* psr)
@@ -204,27 +209,24 @@ type_expr -> type
 			 arr(uint) of type_expr
 			 func(type_exprs): type_expr
 */
-FIRST(type_expr) = { TK_TYPE, TK_CONST, TK_PTR, TK_ARR, TK_FUNC };
+FIRST(type_expr) = { TK_TYINT,   TK_CONST,  TK_PTR, TK_ARR, TK_FUNC,
+                     TK_TYFLOAT, TK_TYBOOL, TK_TYCHAR, TK_TYUINT};
 FOLLOW(type_expr) = { TK_CLOSE_PAREN };
 
 static AST_node* parse_type_expr(parser* psr)
 {
 	switch (psr->lookahead->type)
 	{
-	case TK_TYPE:
+	case TK_TYINT: case TK_TYFLOAT: case TK_TYBOOL: case TK_TYCHAR: case TK_TYUINT: 
 	{
-		AST_node* ret = node_create_q(AST_TYPE, psr->lookahead->attr);
+		AST_node* ret = node_create_q(TK_to_AST(psr->lookahead->type), NULL);
 		psr_next(psr);
 		return ret;
 	}
-	case TK_ARR:
-		return parse_arr_texpr(psr);
-	case TK_PTR:
-		return parse_ptr_texpr(psr);
-	case TK_CONST:
-		return parse_const_texpr(psr);
-	case TK_FUNC:
-		return parse_func_texpr(psr);
+	case TK_ARR: return parse_arr_texpr(psr);
+	case TK_PTR: return parse_ptr_texpr(psr);
+	case TK_CONST: return parse_const_texpr(psr);
+	case TK_FUNC: return parse_func_texpr(psr);
 	default:
 		push_err("제대로 된 타입 식이 아닙니다.");
 	}
@@ -308,47 +310,47 @@ static AST_node* parse_postfix_chain(parser* psr, AST_node* base) //postfix_chai
 	{
 		switch (psr->lookahead->type)
 		{
-		case TK_INC: case TK_DEC:
-		{
-			AST_node* new_node = node_create_q(psr->lookahead->type == TK_INC ? AST_BWINC : AST_BWDEC, NULL);
-			psr_next(psr);
-			new_node->children[0] = base;
-			base = new_node;
-			break;
-		}
-		case TK_DOT: case TK_ARROW:
-		{
-			AST_node* new_node = node_create_q(psr->lookahead->type == TK_DOT ? AST_DOT : AST_ARROW, NULL);
-			psr_next(psr);
-			new_node->children[0] = base;
-			new_node->children[1] = node_create_q(AST_ID, psr->lookahead->attr);
-			psr_expect(psr, TK_ID);
-			base = new_node;
-			break;
-		}
-		case TK_OPEN_BRACKET:
-		{
-			AST_node* new_node = node_create_q(AST_IDX, NULL);
-			psr_next(psr);
-			new_node->children[0] = base;
-			new_node->children[1] = parse_expr(psr);
-			psr_expect(psr, TK_CLOSE_BRACKET);
-			base = new_node;
-			break;
-		}
-		case TK_OPEN_PAREN:
-		{
-			AST_node* new_node = node_create_q(AST_CALL, NULL);
-			psr_next(psr);
-			new_node->children[0] = base;
-			if (in_FIRST(psr->lookahead->type, expr))
-				new_node->children[1] = parse_exprs(psr);
-			psr_expect(psr, TK_CLOSE_PAREN);
-			base = new_node;
-			break;
-		}
-		default:
-			return base;
+			case TK_INC: case TK_DEC:
+			{
+				AST_node* new_node = node_create_q(psr->lookahead->type == TK_INC ? AST_BWINC : AST_BWDEC, NULL);
+				psr_next(psr);
+				new_node->children[0] = base;
+				base = new_node;
+				break;
+			}
+			case TK_DOT: case TK_ARROW:
+			{
+				AST_node* new_node = node_create_q(psr->lookahead->type == TK_DOT ? AST_DOT : AST_ARROW, NULL);
+				psr_next(psr);
+				new_node->children[0] = base;
+				new_node->children[1] = node_create_q(AST_ID, psr->lookahead->attr);
+				psr_expect(psr, TK_ID);
+				base = new_node;
+				break;
+			}
+			case TK_OPEN_BRACKET:
+			{
+				AST_node* new_node = node_create_q(AST_IDX, NULL);
+				psr_next(psr);
+				new_node->children[0] = base;
+				new_node->children[1] = parse_expr(psr);
+				psr_expect(psr, TK_CLOSE_BRACKET);
+				base = new_node;
+				break;
+			}
+			case TK_OPEN_PAREN:
+			{
+				AST_node* new_node = node_create_q(AST_CALL, NULL);
+				psr_next(psr);
+				new_node->children[0] = base;
+				if (in_FIRST(psr->lookahead->type, expr))
+					new_node->children[1] = parse_exprs(psr);
+				psr_expect(psr, TK_CLOSE_PAREN);
+				base = new_node;
+				break;
+			}
+			default:
+				return base;
 		}
 	}
 }
@@ -634,7 +636,7 @@ static inline AST_node* parse_id_list(parser* psr)
 }
 
 /*
-decl_stmt -> decl type_expr id_list
+decl_stmt -> decl type_expr id_list;
 */
 static AST_node* parse_decl_stmt(parser* psr)
 {
@@ -642,6 +644,7 @@ static AST_node* parse_decl_stmt(parser* psr)
 	AST_node* new_node = node_create_q(AST_DECL, NULL);
 	new_node->children[0] = parse_type_expr(psr);
 	new_node->children[1] = parse_id_list(psr);
+	psr_expect(psr, TK_SEMICOLON);
 	return new_node;
 }
 
@@ -661,7 +664,8 @@ static AST_node* parse_param(parser* psr)
 params -> param, params
           param
 */
-FIRST(params) = { TK_TYPE, TK_CONST, TK_PTR, TK_ARR, TK_FUNC };
+FIRST(params) = { TK_TYINT,   TK_CONST,  TK_PTR,    TK_ARR,   TK_FUNC,
+				  TK_TYFLOAT, TK_TYBOOL, TK_TYCHAR, TK_TYUINT };
 static inline AST_node* parse_params(parser* psr)
 {
 	return parse_left_conj(psr, parse_param, TK_COMMA);
@@ -699,6 +703,7 @@ static AST_node* parse_return_stmt(parser* psr)
 	psr_next(psr);
 	AST_node* return_node = node_create_q(AST_RETURN, NULL);
 	return_node->children[0] = parse_expr(psr);
+	psr_expect(psr, TK_SEMICOLON);
 	return return_node;
 }
 
@@ -708,7 +713,6 @@ static AST_node* parse_for_stmt(parser* psr)
 	AST_node* ret = node_create_q(AST_FOR, NULL);
 	psr_expect(psr, TK_OPEN_PAREN);
 	ret->children[0] = parse_decl_stmt(psr);
-	psr_expect(psr, TK_SEMICOLON);
 	ret->children[1] = parse_expr(psr);
 	psr_expect(psr, TK_SEMICOLON);
 	ret->children[2] = parse_exprs(psr);
@@ -720,54 +724,58 @@ static AST_node* parse_for_stmt(parser* psr)
 /*
 stmt -> { stmts }
         while (expr) stmt
-		for (decl_stmt; expr; exprs) stmt
+		for (decl_stmt expr; exprs) stmt
 	    if (expr) stmt 
 	    if (expr) stmt else stmt
 		decl_stmt
 		fdecl_stmt
-	    return expr
-		expr
-	    epsilon
+	    return expr;
+		expr;
+	    ;
 */
-FIRST(stmt) = { TK_ID,     TK_STR,   TK_FLOAT, TK_UINT,       TK_INT,
-				TK_TRUE,   TK_FALSE, TK_MINUS, TK_OPEN_PAREN, TK_INC,
-				TK_DEC,    TK_NOT,   TK_BNOT,  TK_MUL,        TK_BAND,
-                TK_WHILE,  TK_FOR,   TK_IF,    TK_OPEN_BRACE, TK_FUNC,
-                TK_DECL,   TK_RETURN};
 static AST_node* parse_stmt(parser* psr)
 {
 	if (in_FIRST(psr->lookahead->type, expr))
-		return parse_expr(psr);
+	{
+		AST_node* ret = parse_expr(psr);
+		psr_expect(psr, TK_SEMICOLON);
+		return ret;
+	}
 	switch (psr->lookahead->type)
 	{
-		case TK_OPEN_BRACE:
-			return parse_block_stmt(psr);
-		case TK_WHILE:
-			return parse_while_stmt(psr);
-		case TK_IF:
-			return parse_if_stmt(psr);
-		case TK_DECL:
-			return parse_decl_stmt(psr);
-		case TK_FUNC:
-			return parse_fdecl_stmt(psr);
-		case TK_RETURN:
-			return parse_return_stmt(psr);
-		case TK_FOR:
-			return parse_for_stmt(psr);
-		default:
+		case TK_OPEN_BRACE: return parse_block_stmt(psr);
+		case TK_WHILE: return parse_while_stmt(psr);
+		case TK_IF: return parse_if_stmt(psr);
+		case TK_DECL: return parse_decl_stmt(psr);
+		case TK_FUNC: return parse_fdecl_stmt(psr);
+		case TK_RETURN: return parse_return_stmt(psr);
+		case TK_FOR: return parse_for_stmt(psr);
+
+		case TK_SEMICOLON:
+		{
+			psr_next(psr);
 			return NULL;
+		}
+		default:
+		{
+			printf(color_err "Line %u: 예상하지 못한 %s가 있습니다 \n", psr->lookahead->col, token_strty[psr->lookahead->type]);
+			abort();
+		}
 	}
 }
 
 /*
-stmts -> stmt; stmts
-         stmt
+stmts -> stmt stmts
+		 epsilon
 */
+FOLLOW(stmts) = { TK_END, TK_CLOSE_BRACE };
 static inline AST_node* parse_stmts(parser* psr)
 {
-	AST_node* ret = parse_left_conj(psr, parse_stmt, TK_SEMICOLON);
-	if (in_FIRST(psr->lookahead->type, stmt))
-		push_warn(";이 필요합니다.");
+	if (in_FOLLOW(psr->lookahead->type, stmts))
+		return NULL;
+	AST_node* ret = node_create_q(AST_CONJ, NULL);
+	ret->children[0] = parse_stmt(psr);
+	ret->children[1] = parse_stmts(psr);
 	return ret;
 }
 

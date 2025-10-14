@@ -70,6 +70,11 @@ void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
 		puts(color(0, 220, 0) "\n[[ parsing complete! ]]" color_clear "\n");
 	}
 
+	symbol_table syt;
+	syt_create(&syt);
+	syt_insert(&syt, result->children[0]);
+	syt_show(&syt);
+
 	tknz_destroy(&tknz);
 	psr_destroy(&psr);
 }

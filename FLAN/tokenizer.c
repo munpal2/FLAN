@@ -4,7 +4,7 @@
 #define TYPE_COUNT 5
 
 #define push_err(str) do { \
-	printf(color(220, 110, 0) "Line %u: " str, tknz->col); \
+	printf(color_err "Line %u: " str, tknz->col); \
 	abort(); } while(0)
 
 const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",       "TK_STR",          "TK_ID",
@@ -20,7 +20,8 @@ const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",    
                               "TK_SHREQ",       "TK_OREQ",       "TK_ANDEQ",       "TK_XOREQ",        "TK_OPEN_PAREN",
                               "TK_CLOSE_PAREN", "TK_OPEN_BRACE", "TK_CLOSE_BRACE", "TK_OPEN_BRACKET", "TK_CLOSE_BRACKET",
                               "TK_COMMA",       "TK_AS",         "TK_ARR",         "TK_OF",           "TK_COLON",
-                              "TK_RETURN",      "TK_CHAR"};
+                              "TK_RETURN",      "TK_CHAR",       "TK_TYFLOAT",     "TK_TYBOOL",       "TK_TYCHAR",
+                              "TK_TYUINT"};
 
 const char* keywords[KEYWORDS_COUNT] = { "decl",  "for", "while", "if",    "else",
                                          "const", "ptr", "true",  "false", "as", 
@@ -30,6 +31,7 @@ token_type keyword_types[KEYWORDS_COUNT] = { TK_DECL,  TK_FOR,  TK_WHILE, TK_IF,
                                              TK_ARR,   TK_OF,   TK_FUNC,  TK_RETURN };
 
 const char* types[TYPE_COUNT] = { "int", "float", "bool", "uint", "char" };
+token_type type_types[TYPE_COUNT] = { TK_TYINT, TK_TYFLOAT, TK_TYBOOL, TK_TYUINT, TK_TYBOOL };
 
 const char* specs = ";{}[](),.~:";
 token_type spec_types[] = { TK_SEMICOLON,  TK_OPEN_BRACE,  TK_CLOSE_BRACE, TK_OPEN_BRACKET, TK_CLOSE_BRACKET,
@@ -68,7 +70,7 @@ bool tknz_init(tokenizer* tknz, const char* filename)
     for (size_t i = 0; i < TYPE_COUNT; i++)
     {
         node = htb_insert(&(tknz->token_map), types[i]);
-        token_create(node, TK_TYPE, 0, types[i]);
+        token_create(node, type_types[i], 0, types[i]);
     }
 
     tknz->token_cnt = 0;

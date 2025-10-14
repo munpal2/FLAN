@@ -147,6 +147,7 @@
     <Text Include="test\optimize.fe" />
     <Text Include="test\test.fe" />
     <Text Include="test\tmp.fe" />
+    <Text Include="test\type.fe" />
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md" />

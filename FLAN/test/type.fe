@@ -1,0 +1,2 @@
+decl int a, b;
+func aff(int a, int b): ptr of uint {}

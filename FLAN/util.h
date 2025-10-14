@@ -66,3 +66,7 @@ void* varr_get_impl(variable_arr* varr, size_t idx);
 
 #define color(R, G, B) "\033[38;2;" #R ";" #G ";" #B "m\b"
 #define color_clear "\033[39m"
+
+#define color_sys_err color(220, 0, 0)
+#define color_err color(220, 130, 0)
+#define color_warn color(220, 220, 0)

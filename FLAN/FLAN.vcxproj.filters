@@ -16,14 +16,14 @@
     <ClCompile Include="tokenizer.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="util.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="sementic.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="irgen.c">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util.c">
+      <Filter>헤더 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,6 +88,9 @@
       <Filter>리소스 파일\test</Filter>
     </Text>
     <Text Include="test\optimize.fe">
+      <Filter>리소스 파일\test</Filter>
+    </Text>
+    <Text Include="test\type.fe">
       <Filter>리소스 파일\test</Filter>
     </Text>
   </ItemGroup>

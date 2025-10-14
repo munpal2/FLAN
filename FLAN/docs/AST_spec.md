@@ -4,7 +4,7 @@
 | 정의명        | 실제 값 | 예시             | [attr]값   | [0]           | [1]           | [2]     | [3]     |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | AST_CONJ      | 0        | stmt1 ; stmt2 <br> 1, 2    | 없음       | 앞 구문       | 뒷 구문       |         |         |
-| AST_DECL      | 1        | decl int a           | 없음       | 타입          | 식별자        |         |         |
+| AST_DECL      | 1        | decl int a       | 없음       | 타입          | 식별자 목록   |         |         |
 | AST_CONST     | 2        | const int        | 없음       | 붙는 타입     |               |         |         |
 | AST_PTROF     | 3        | ptr int          | 없음       | 붙는 타입     |               |         |         |
 | AST_ASSIGN    | 4        | x = y            | 없음       | 좌변          | 우변          |         |         |
@@ -20,9 +20,9 @@
 | AST_INT       | 14       | 123              | "123"      |               |               |         |         |
 | AST_FLOAT     | 15       | 3.14             | "3.14"     |               |               |         |         |
 | AST_UINT      | 16       | 123u             | "123"      |               |               |         |         |
-| AST_TYPE      | 17       | int              | "int"      |               |               |         |         |
+| AST_TYINT     | 17       | int              | 없음       |               |               |         |         |
 | AST_CAST      | 18       | (int)x           | 없음       | 타입          | 대상 식       |         |         |
-| AST_ARR       | 19       | arr int[10]     | 없음       | 원소 타입     | 길이 값       |         |         |
+| AST_ARR       | 19       | arr int[10]      | 없음       | 원소 타입     | 길이 값       |         |         |
 | AST_FWINC     | 20       | ++x              | 없음       | 대상 식       |               |         |         |
 | AST_FWDEC     | 21       | --x              | 없음       | 대상 식       |               |         |         |
 | AST_BWINC     | 22       | x++              | 없음       | 대상 식       |               |         |         |
@@ -70,6 +70,10 @@
 | AST_CHAR      | 64       | 'c'               | "c"
 | AST_IDINIT    | 65       | list = {1, 2, 3}  | 없음 | 식별자 | 초기화 식
 | AST_INITEXPR  | 66       | {1, 2, 3}         | 없음 | 현재 식 | 다음 식<br>(끝이면 NULL) 
+| AST_TYFLOAT   | 67       | float             | 없음
+| AST_TYBOOL    | 68       | bool              | 없음
+| AST_TYCHAR    | 69       | char              | 없음
+| AST_TYUINT    | 70       | uint              | 없음
 
 ## 임시 노드들 (AST optimizing 과정에서 사라짐)
 - AST_GTE

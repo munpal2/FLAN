@@ -63,7 +63,7 @@ bool str_builder_add(str_builder* strbd, char ch)
 		strbd->dest = realloc(strbd->dest, strbd->capacity * 2);
 		if (strbd->dest == NULL)
 		{
-			puts(color(220, 0, 0) "스트링빌더를 리사이징하는데 실패했습니다");
+			puts(color_sys_err "스트링빌더를 리사이징하는데 실패했습니다");
 			abort();
 		}
 		strbd->capacity *= 2;

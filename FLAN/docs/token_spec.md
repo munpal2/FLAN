@@ -15,7 +15,7 @@
 |:---:|:---:|:---:|:---:|
 | TK_CONST     | 6        | const      | 없음       |
 | TK_PTR       | 7        | ptr        | 없음       |
-| TK_FUNC      | 8         | func      | 없음       |
+| TK_FUNC      | 8        | func      | 없음       |
 | TK_DECL      | 11       | decl       | 없음       |
 | TK_FOR       | 12       | for        | 없음       |
 | TK_WHILE     | 13       | while      | 없음       |
@@ -23,11 +23,15 @@
 | TK_ELSE      | 15       | else       | 없음       |
 | TK_TRUE      | 16       | true       | 없음       |
 | TK_FALSE     | 17       | false      | 없음       |
-| TK_TYPE      | 48       | int, float | "int"      |
+| TK_TYINT     | 48       | int        | 없음       |
 | TK_AS        | 61       | as         | 없음       |
 | TK_ARR       | 62       | arr        | 없음       |
 | TK_OF        | 63       | of         | 없음       |
-| TK_RETURN    | 65       | return     | 없음       |_
+| TK_RETURN    | 66       | return     | 없음       |
+| TK_TYFLOAT   | 67       | float      | 없음       |
+| TK_TYBOOL    | 68       | bool       | 없음       |
+| TK_TYCHAR    | 69       | char       | 없음       |
+| TK_TYUINT    | 70       | uint       | 없음       |
 
 ## 연산자 토큰
 | 정의명       | 실제 값 | 예시       | [attr]값   |
