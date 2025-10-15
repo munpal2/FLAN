@@ -132,17 +132,12 @@ static inline void push_token(tokenizer* tknz, unsigned int type, const char* at
 
 static unsigned int assume_numtkty(const char* str)
 {
-    if (str[0] == '.')
-        return TK_INVALID;
-
     bool dot_included = false;
     size_t dot_pos = -1;
     for (size_t i = 1; str[i] != '\0'; i++)
     {
         switch (str[i])
         {
-        case '-':
-            return TK_INVALID;
         case '.':
             if (dot_included || str[i + 1] == '\0')
                 return TK_INVALID;
