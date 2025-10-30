@@ -29,19 +29,17 @@ const char* AST_strty[] = {"AST_CONJ",   "AST_DECL",    "AST_CONST",   "AST_PTRO
 	                       "AST_IDINIT", "AST_INITEXPR", "AST_TYFLOAT", "AST_TYBOOL",  "AST_TYCHAR",
                            "AST_TYUINT"};
 
-AST_node* AST_node_create(AST_type type, const char* str, unsigned int col)
+AST_node* AST_node_create(AST_node* dest, AST_type type, const char* str, unsigned int col)
 {
-	AST_node* ret = calloc(sizeof(AST_node), 1);
-	if (ret == NULL)
-		return NULL;
-	ret->col = col;
-	ret->type = type;
+	memset(&(dest->children), 0, sizeof(AST_node*) * 4);
+	dest->next = NULL;
+	dest->col = col;
+	dest->type = type;
 	if (str != NULL)
-		ret->attr = _strdup(str);
-	return ret;
+		dest->attr = _strdup(str);
 }
 
-#define node_create_q(type, str) AST_node_create(type, str, psr->lookahead->col)
+#define node_create_q(type, str) AST_node_create(acquire(AST_node), type, str, psr->lookahead->col)
 
 void AST_node_destroy(AST_node * dest)
 {
@@ -136,18 +134,19 @@ FIRST(expr) = { TK_ID,   TK_STR,   TK_FLOAT, TK_UINT,       TK_INT,
 
 /*
 left_conj -> basic separator left_conj
-             basic
+			 basic
 */
 static AST_node* parse_left_conj(parser* psr, AST_node* (*parse_basic)(parser*), token_type separator)
 {
-	AST_node* conj_node = node_create_q(AST_CONJ, NULL);
-	conj_node->children[0] = parse_basic(psr);
-	if (psr->lookahead->type == separator)
+	AST_node* head = parse_basic(psr);
+	AST_node* tail = head;
+	while (psr->lookahead->type == separator)
 	{
 		psr_next(psr);
-		conj_node->children[1] = parse_left_conj(psr, parse_basic, separator);
+		tail->next = parse_basic(psr);
+		tail = tail->next;
 	}
-	return conj_node;
+	return head;
 }
 
 static inline AST_node* parse_type_exprs(parser* psr)
@@ -773,10 +772,14 @@ static inline AST_node* parse_stmts(parser* psr)
 {
 	if (in_FOLLOW(psr->lookahead->type, stmts))
 		return NULL;
-	AST_node* ret = node_create_q(AST_CONJ, NULL);
-	ret->children[0] = parse_stmt(psr);
-	ret->children[1] = parse_stmts(psr);
-	return ret;
+	AST_node* head = parse_stmt(psr);
+	AST_node* tail = head;
+	while (!in_FOLLOW(psr->lookahead->type, stmts))
+	{
+		tail->next = parse_stmt(psr);
+		tail = tail->next;
+	}
+	return head;
 }
 
 AST_node* psr_parse(parser* psr)

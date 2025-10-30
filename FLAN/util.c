@@ -1,5 +1,16 @@
 #include "util.h"
 
+void* acquire_impl(size_t sz)
+{
+	void* mem = malloc(sz);
+	if (mem == NULL)
+	{
+		printf(color_sys_err "메모리 할당에 실패했습니다.");
+		abort;
+	}
+	return mem;
+}
+
 bool open_file(file_poller* dest, const char* filename, const char* mode)
 {
 	dest->fp = fopen(filename, mode);
@@ -49,13 +60,6 @@ void close_file(file_poller* dest)
 	fclose(dest->fp);
 }
 
-void str_builder_create(str_builder* strbd)
-{
-	strbd->dest = (char*)malloc(STR_BUILDER_INITIAL_SIZE);
-	strbd->capacity = STR_BUILDER_INITIAL_SIZE;
-	strbd->len = 0;
-}
-
 bool str_builder_add(str_builder* strbd, char ch)
 {
 	if (strbd->len >= strbd->capacity - 1)
@@ -93,6 +97,13 @@ const char* str_builder_pop(str_builder* strbd)
 	strbd->dest[strbd->len] = '\0';
 	strbd->len = 0;
 	return strbd->dest;
+}
+
+void str_builder_create(str_builder* strbd)
+{
+	strbd->dest = (char*)malloc(STR_BUILDER_INITIAL_SIZE);
+	strbd->capacity = STR_BUILDER_INITIAL_SIZE;
+	strbd->len = 0;
 }
 
 void str_builder_destroy(str_builder* strbd)

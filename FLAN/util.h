@@ -7,6 +7,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define acquire(type) acquire_impl(sizeof(type));
+void* acquire_impl(size_t sz);
+
 #define FILE_BUF_SIZE_LOG2 12
 #define FILE_BUF_SIZE (1 << FILE_BUF_SIZE_LOG2)
 typedef struct file_poller
@@ -44,11 +47,11 @@ typedef struct str_builder
 
 #define STR_BUILDER_INITIAL_SIZE 32
 
-void str_builder_create(str_builder* strbd);
 bool str_builder_add(str_builder* strbd, char ch);
 bool str_builder_add_str(str_builder* strbd, const char* str);
 const char* str_builder_get(str_builder* strbd);
 const char* str_builder_pop(str_builder* strbd);
+void str_builder_create(str_builder* strbd);
 void str_builder_destroy(str_builder* strbd);
 
 typedef struct variable_arr

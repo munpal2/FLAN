@@ -22,12 +22,13 @@ static void token_show(variable_arr* tokens)
 	}
 }
 
-static void node_show(AST_node* node, size_t depth)
+const char* idx_str[] = { "[0] ", "[1] ", "[2] ", "[3] "};
+static void node_show(AST_node* node, size_t depth, const char* idx)
 {
 	for (size_t i = 0; i < depth; i++)
 		printf("  ");
 
-	printf("%s", AST_strty[node->type]);
+	printf("%s%s", idx, AST_strty[node->type]);
 	if (node->attr != NULL)
 		printf(": %s", node->attr);
 	puts(" {");
@@ -35,11 +36,15 @@ static void node_show(AST_node* node, size_t depth)
 	for (size_t i = 0; i < 4; i++)
 	{
 		if (node->children[i] != NULL)
-			node_show(node->children[i], depth + 1);
+			node_show(node->children[i], depth + 1, idx_str[i]);
 	}
+
 	for (size_t i = 0; i < depth; i++)
 		printf("  ");
 	puts("}");
+
+	if (node->next != NULL)
+		node_show(node->next, depth, "[+] ");
 }
 
 void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
@@ -66,7 +71,7 @@ void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
 
 	if (flag & TEST_PSR)
 	{
-		node_show(result, 0);
+		node_show(result, 0, "[R] ");
 		puts(color(0, 220, 0) "\n[[ parsing complete! ]]" color_clear "\n");
 	}
 
