@@ -130,6 +130,7 @@
     <ClCompile Include="sementic.c" />
     <ClCompile Include="test.c" />
     <ClCompile Include="tokenizer.c" />
+    <ClCompile Include="type.c" />
     <ClCompile Include="util.c" />
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +140,7 @@
     <ClInclude Include="sementic.h" />
     <ClInclude Include="test.h" />
     <ClInclude Include="tokenizer.h" />
+    <ClInclude Include="type.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
@@ -151,6 +153,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md" />
+    <None Include="docs\ir_spec.md" />
     <None Include="docs\token_spec.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

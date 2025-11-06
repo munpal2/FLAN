@@ -1,6 +1,2 @@
-decl int a;
-if (a < 0)
-{
-	return 0;
-}
-if (a > 0) {}
+func foo(arr(2U) of ptr of func(int) a, char b): int
+{}

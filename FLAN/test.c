@@ -1,8 +1,40 @@
 #include "test.h"
 
+const char* idx_str[] = { "[0] ", "[1] ", "[2] ", "[3] " };
+static void tytree_show(tytree_node* node, size_t depth, const char* idx)
+{
+	for (size_t i = 0; i < depth; i++)
+		printf("  ");
+
+	printf("%s%s", idx, tytree_strty[node->type]);
+	if (node->len != 0)
+		printf("(%llu)", node->len);
+	puts(" {");
+
+	for (size_t i = 0; i < 2; i++)
+	{
+		if (node->children[i] != NULL)
+			tytree_show(node->children[i], depth + 1, idx_str[i]);
+	}
+
+	for (size_t i = 0; i < depth; i++)
+		printf("  ");
+	puts("}");
+
+	if (node->next != NULL)
+		tytree_show(node->next, depth, "[+] ");
+}
+
 static void symbol_show(symbol* sym)
 {
-	printf("%u %lld\n", sym->addrtype, sym->addr);
+	if (sym->addrtype == ADDR_REL)
+		printf("\nREL(");
+	else
+		printf("\nABS(");
+	printf("%lld)\n", sym->addr);
+
+	printf("type: \n");
+	tytree_show(sym->type, 1, "[T] ");
 }
 
 static void syt_show(symbol_table* syt)
@@ -22,7 +54,6 @@ static void token_show(variable_arr* tokens)
 	}
 }
 
-const char* idx_str[] = { "[0] ", "[1] ", "[2] ", "[3] "};
 static void node_show(AST_node* node, size_t depth, const char* idx)
 {
 	for (size_t i = 0; i < depth; i++)
@@ -74,6 +105,12 @@ void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
 		node_show(result, 0, "[R] ");
 		puts(color(0, 220, 0) "\n[[ parsing complete! ]]" color_clear "\n");
 	}
+
+	//symbol_table syt;
+	//syt_create(&syt);
+	//syt_insertf(&syt, result);
+	//syt_show(&syt);
+	//syt_destroy(&syt);
 
 	tknz_destroy(&tknz);
 	psr_destroy(&psr);

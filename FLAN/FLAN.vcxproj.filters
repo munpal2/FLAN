@@ -25,6 +25,9 @@
     <ClCompile Include="util.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="type.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hashtable.h">
@@ -48,12 +51,18 @@
     <ClInclude Include="irgen.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="type.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md">
       <Filter>리소스 파일\docs</Filter>
     </None>
     <None Include="docs\token_spec.md">
+      <Filter>리소스 파일\docs</Filter>
+    </None>
+    <None Include="docs\ir_spec.md">
       <Filter>리소스 파일\docs</Filter>
     </None>
   </ItemGroup>

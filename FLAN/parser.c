@@ -13,33 +13,35 @@
 #define in_FIRST(target, smt) in_impl((target), smt##_FIRST, LEN(smt##_FIRST))
 #define in_FOLLOW(target, smt) in_impl((target), smt##_FOLLOW, LEN(smt##_FOLLOW))
 
-const char* AST_strty[] = {"AST_CONJ",   "AST_DECL",    "AST_CONST",   "AST_PTROF",   "AST_ASSIGN",
-                           "AST_ADD",    "AST_SUB",     "AST_MUL",     "AST_DIV",     "AST_NEG",
-	                       "AST_REF",    "AST_GETADDR", "AST_ID",      "AST_STR",     "AST_INT",
-	                       "AST_FLOAT",  "AST_UINT",    "AST_TYINT",   "AST_CAST",    "AST_ARR",
-	                       "AST_FWINC",  "AST_FWDEC",   "AST_BWINC",   "AST_BWDEC",   "AST_DOT",
-                           "AST_ARROW",  "AST_TRUE",    "AST_FALSE",   "AST_NOT",     "AST_BNOT", 
-                           "AST_MOD",    "AST_LSHIFT",  "AST_RSHIFT",  "AST_LT",      "AST_GT",
-                           "AST_LTE",    "AST_GTE",     "AST_EQ",      "AST_NEQ",     "AST_BAND",
-	                       "AST_BOR",    "AST_BXOR",    "AST_OR",      "AST_AND",     "AST_ADDI",
-	                       "AST_SUBI",   "AST_MULI",    "AST_DIVI",    "AST_MODI",    "AST_ANDI",
-	                       "AST_ORI",    "AST_XORI",    "AST_LSHIFTI", "AST_RSHIFTI", "AST_WHILE",
+const char* AST_strty[] = {"AST_TYUINT", "AST_DECL",    "AST_CONST",    "AST_PTROF",   "AST_ASSIGN",
+                           "AST_ADD",    "AST_SUB",     "AST_MUL",      "AST_DIV",     "AST_NEG",
+	                       "AST_REF",    "AST_GETADDR", "AST_ID",       "AST_STR",     "AST_INT",
+	                       "AST_FLOAT",  "AST_UINT",    "AST_TYINT",    "AST_CAST",    "AST_ARR",
+	                       "AST_FWINC",  "AST_FWDEC",   "AST_BWINC",    "AST_BWDEC",   "AST_DOT",
+                           "AST_ARROW",  "AST_TRUE",    "AST_FALSE",    "AST_NOT",     "AST_BNOT", 
+                           "AST_MOD",    "AST_LSHIFT",  "AST_RSHIFT",   "AST_LT",      "AST_GT",
+                           "AST_LTE",    "AST_GTE",     "AST_EQ",       "AST_NEQ",     "AST_BAND",
+	                       "AST_BOR",    "AST_BXOR",    "AST_OR",       "AST_AND",     "AST_ADDX",
+	                       "AST_SUBX",   "AST_MULX",    "AST_DIVX",     "AST_MODX",    "AST_ANDX",
+	                       "AST_ORX",    "AST_XORX",    "AST_LSHIFTX",  "AST_RSHIFTX", "AST_WHILE",
                            "AST_IF",     "AST_FDECL",    "AST_BLOCK",   "AST_PARAM",   "AST_RETURN",
                            "AST_IDX",    "AST_FUNC",     "AST_CALL",    "AST_FOR",     "AST_CHAR",
-	                       "AST_IDINIT", "AST_INITEXPR", "AST_TYFLOAT", "AST_TYBOOL",  "AST_TYCHAR",
-                           "AST_TYUINT"};
+	                       "AST_IDINIT", "AST_INITEXPR", "AST_TYFLOAT", "AST_TYBOOL",  "AST_TYCHAR"};
 
-AST_node* AST_node_create(AST_node* dest, AST_type type, const char* str, unsigned int col)
+AST_node* AST_node_create(AST_type type, const char* str, unsigned int col)
 {
-	memset(&(dest->children), 0, sizeof(AST_node*) * 4);
-	dest->next = NULL;
-	dest->col = col;
-	dest->type = type;
+	AST_node* ret = calloc(sizeof(AST_node), 1);
+	if (ret == NULL)
+		return NULL;
+
+	ret->col = col;
+	ret->type = type;
 	if (str != NULL)
-		dest->attr = _strdup(str);
+		ret->attr = _strdup(str);
+	return ret;
 }
 
-#define node_create_q(type, str) AST_node_create(acquire(AST_node), type, str, psr->lookahead->col)
+#define node_create_q(type, str) AST_node_create(type, str, psr->lookahead->col)
 
 void AST_node_destroy(AST_node * dest)
 {
@@ -49,6 +51,8 @@ void AST_node_destroy(AST_node * dest)
 		if (dest->children[i] != NULL)
 			AST_node_destroy(dest->children[i]);
 	}
+	if (dest->next != NULL)
+		AST_node_destroy(dest->next);
 	free(dest);
 }
 
@@ -154,14 +158,6 @@ static inline AST_node* parse_type_exprs(parser* psr)
 	return parse_left_conj(psr, parse_type_expr, TK_COMMA);
 }
 
-static AST_node* parse_const_texpr(parser* psr)
-{
-	psr_next(psr);
-	AST_node* ret = node_create_q(AST_CONST, NULL);
-	ret->children[0] = parse_type_expr(psr);
-	return ret;
-}
-
 static AST_node* parse_ptr_texpr(parser* psr)
 {
 	psr_next(psr);
@@ -196,27 +192,26 @@ static AST_node* parse_func_texpr(parser* psr)
 	psr_expect(psr, TK_OPEN_PAREN);
 	ret->children[0] = parse_type_exprs(psr);
 	psr_expect(psr, TK_CLOSE_PAREN);
-	psr_expect(psr, TK_COLON);
-	ret->children[1] = parse_type_expr(psr);
+	if (psr->lookahead->type == TK_COLON)
+	{
+		psr_next(psr);
+		ret->children[1] = parse_type_expr(psr);
+	}
 	return ret;
 }
 
 /*
-type_expr -> type
-			 const type_expr
-			 ptr of type_expr
-			 arr(uint) of type_expr
-			 func(type_exprs): type_expr
+nonconst_type_expr -> type
+					  ptr of type_expr
+					  arr(uint) of type_expr
+					  func(type_exprs): type_expr
+					  func(type_exprs)
 */
-FIRST(type_expr) = { TK_TYINT,   TK_CONST,  TK_PTR, TK_ARR, TK_FUNC,
-                     TK_TYFLOAT, TK_TYBOOL, TK_TYCHAR, TK_TYUINT};
-FOLLOW(type_expr) = { TK_CLOSE_PAREN };
-
-static AST_node* parse_type_expr(parser* psr)
+static AST_node* parse_nonconst_texpr(parser* psr)
 {
 	switch (psr->lookahead->type)
 	{
-	case TK_TYINT: case TK_TYFLOAT: case TK_TYBOOL: case TK_TYCHAR: case TK_TYUINT: 
+	case TK_TYINT: case TK_TYFLOAT: case TK_TYBOOL: case TK_TYCHAR: case TK_TYUINT:
 	{
 		AST_node* ret = node_create_q(TK_to_AST(psr->lookahead->type), NULL);
 		psr_next(psr);
@@ -224,11 +219,34 @@ static AST_node* parse_type_expr(parser* psr)
 	}
 	case TK_ARR: return parse_arr_texpr(psr);
 	case TK_PTR: return parse_ptr_texpr(psr);
-	case TK_CONST: return parse_const_texpr(psr);
 	case TK_FUNC: return parse_func_texpr(psr);
 	default:
 		push_err("제대로 된 타입 식이 아닙니다.");
 	}
+}
+
+static AST_node* parse_const_texpr(parser* psr)
+{
+	psr_next(psr);
+	AST_node* ret = node_create_q(AST_CONST, NULL);
+	ret->children[0] = parse_nonconst_texpr(psr);
+	return ret;
+}
+
+/*
+type_expr -> const nonconst_type_expr
+			 nonconst_type_expr
+*/
+FIRST(type_expr) = { TK_TYINT,   TK_CONST,  TK_PTR, TK_ARR, TK_FUNC,
+                     TK_TYFLOAT, TK_TYBOOL, TK_TYCHAR, TK_TYUINT};
+FOLLOW(type_expr) = { TK_CLOSE_PAREN };
+
+static AST_node* parse_type_expr(parser* psr)
+{
+	if (psr->lookahead->type == TK_CONST)
+		return parse_const_texpr(psr);
+	else
+		return parse_nonconst_texpr(psr);
 }
 
 /*
@@ -445,15 +463,15 @@ token_type operators[10][4] = { {TK_MUL,    TK_DIV,     TK_MOD},
 	                              {TK_OR} };
 size_t operators_len[10] = {3, 2, 2, 4, 2, 1, 1, 1, 1, 1};
 AST_type operators_AST[10][4] = { {AST_MUL,    AST_DIV,     AST_MOD},
-	                                  {AST_ADD,    AST_SUB}, 
-	                                  {AST_LSHIFT, AST_RSHIFT}, 
-	                                  {AST_LT,     AST_GT,      AST_LTE,  AST_GTE},
-	                                  {AST_EQ,     AST_NEQ},
-	                                  {AST_BAND},
-	                                  {AST_BXOR}, 
-	                                  {AST_BOR},
-	                                  {AST_AND},
-	                                  {AST_OR} };
+	                              {AST_ADD,    AST_SUB}, 
+	                              {AST_LSHIFT, AST_RSHIFT}, 
+	                              {AST_LT,     AST_GT,      AST_LTE,  AST_GTE},
+	                              {AST_EQ,     AST_NEQ},
+	                              {AST_BAND},
+	                              {AST_BXOR}, 
+	                              {AST_BOR},
+	                              {AST_AND},
+	                              {AST_OR} };
 
 static AST_node* parse_left_assoc(parser* psr, int depth)
 {
@@ -489,9 +507,9 @@ static AST_node* parse_left_assoc(parser* psr, int depth)
 token_type assigns[11] = {TK_ASSIGN,  TK_ANDEQ, TK_OREQ,  TK_XOREQ, TK_PLUSEQ,
                             TK_MINUSEQ, TK_MULEQ, TK_DIVEQ, TK_MODEQ, TK_SHLEQ,
                             TK_SHREQ};
-AST_type assigns_AST[11] = {AST_ASSIGN, AST_ANDI, AST_ORI,  AST_XORI, AST_ADDI,
-                                AST_SUBI,   AST_MULI, AST_DIVI, AST_MODI, AST_LSHIFTI, 
-                                AST_RSHIFTI};
+AST_type assigns_AST[11] = {AST_ASSIGN, AST_ANDX, AST_ORX,  AST_XORX, AST_ADDX,
+                            AST_SUBX,   AST_MULX, AST_DIVX, AST_MODX, AST_LSHIFTX, 
+                            AST_RSHIFTX};
 
 /*
 expr -> lassoc = lassoc

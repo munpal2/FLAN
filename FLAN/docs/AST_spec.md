@@ -3,7 +3,7 @@
 ## 전체 AST노드 정보
 | 정의명        | 실제 값 | 예시             | [attr]값   | [0]           | [1]           | [2]     | [3]     |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| AST_CONJ      | 0        | stmt1 ; stmt2 <br> 1, 2    | 없음       | 앞 구문       | 뒷 구문       |         |         |
+| AST_TYUINT    | 0       | uint              | 없음
 | AST_DECL      | 1        | decl int a       | 없음       | 타입          | 식별자 목록   |         |         |
 | AST_CONST     | 2        | const int        | 없음       | 붙는 타입     |               |         |         |
 | AST_PTROF     | 3        | ptr int          | 없음       | 붙는 타입     |               |         |         |
@@ -47,16 +47,16 @@
 | AST_BXOR      | 41       | x ^ y            | 없음       | 좌측 식       | 우측 식       |         |         |
 | AST_OR        | 42       | x \|\| y          | 없음       | 좌측 식       | 우측 식       |         |         |
 | AST_AND       | 43       | x && y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_ADDI      | 44       | x += y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_SUBI      | 45       | x -= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_MULI      | 46       | x *= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_DIVI      | 47       | x /= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_MODI      | 48       | x %= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_ANDI      | 49       | x &= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_ORI       | 50       | x \|= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_XORI      | 51       | x ^= y           | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_LSHIFTI   | 52       | x <<= y          | 없음       | 좌측 식       | 우측 식       |         |         |
-| AST_RSHIFTI   | 53       | x >>= y          | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_ADDX      | 44       | x += y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_SUBX      | 45       | x -= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_MULX      | 46       | x *= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_DIVX      | 47       | x /= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_MODX      | 48       | x %= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_ANDX      | 49       | x &= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_ORX       | 50       | x \|= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_XORX      | 51       | x ^= y           | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_LSHIFTX   | 52       | x <<= y          | 없음       | 좌측 식       | 우측 식       |         |         |
+| AST_RSHIFTX   | 53       | x >>= y          | 없음       | 좌측 식       | 우측 식       |         |         |
 | AST_WHILE     | 54       | while() \{}       | 없음       | 조건식       | 구문          |         |         |
 | AST_IF        | 55       | if () \{}         | 없음       | 조건식       | 구문          | else 일 때의 구문<br>(NULL 일 수 있음) | |
 | AST_FDECL     | 56       | func foo(int a, int b): float | 없음 | 함수명 | 매개변수<br>타입 목록<br>(없으면 NULL) | 리턴 타입<br>(없으면 NULL) | 함수 정의 구문
@@ -73,7 +73,6 @@
 | AST_TYFLOAT   | 67       | float             | 없음
 | AST_TYBOOL    | 68       | bool              | 없음
 | AST_TYCHAR    | 69       | char              | 없음
-| AST_TYUINT    | 70       | uint              | 없음
 
 ## 임시 노드들 (AST optimizing 과정에서 사라짐)
 - AST_GTE
