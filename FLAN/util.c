@@ -11,7 +11,7 @@ void* acquire_impl(size_t sz)
 	return mem;
 }
 
-bool open_file(file_poller* dest, const char* filename, const char* mode)
+bool fpl_open(file_poller* dest, const char* filename, const char* mode)
 {
 	dest->fp = fopen(filename, mode);
 	if (dest->fp == NULL)
@@ -27,7 +27,7 @@ bool open_file(file_poller* dest, const char* filename, const char* mode)
 	return true;
 }
 
-char lookahead(file_poller* dest, size_t n)
+char fpl_lookahead(file_poller* dest, size_t n)
 {
 	if (n >= FILE_BUF_SIZE)
 		return EOF;
@@ -55,7 +55,7 @@ char lookahead(file_poller* dest, size_t n)
 	return dest->buf[dest->buffer_idx][idx];
 }
 
-void close_file(file_poller* dest)
+void fpl_close(file_poller* dest)
 {
 	fclose(dest->fp);
 }
@@ -120,17 +120,18 @@ static bool expand(variable_arr* varr)
 	if (new_data == NULL)
 		return false;
 	varr->data = new_data;
-	varr->size *= 2;
+	varr->capacity *= 2;
 	return true;
 }
 
-void* varr_get_impl(variable_arr* varr, size_t idx)
+void* varr_get(variable_arr* varr, size_t idx)
 {
-	while (idx >= varr->size)
+	while (idx >= varr->capacity)
 	{
 		if (!expand(varr))
 			return NULL;
 	}
+	varr->size = idx > varr->size ? idx : varr->size;
 	return ((char*)(varr->data) + varr->element_size * idx);
 }
 
@@ -138,12 +139,23 @@ void varr_destroy(variable_arr* varr) //°Á clear¿ëÀ¸·Î ½áµµ µÊ
 {
 	free(varr->data);
 	varr->data = NULL;
+	varr->capacity = 0;
 	varr->size = 0;
 }
 
-bool varr_create_impl(variable_arr* varr, size_t elementsize, size_t size)
+bool varr_create_impl(variable_arr* varr, size_t elementsize, size_t initial_capacity)
 {
 	varr->element_size = elementsize;
-	varr->size = size;
-	return (varr->data = malloc(elementsize * size)) != NULL;
+	varr->capacity = initial_capacity;
+	varr->size = 0;
+	return (varr->data = malloc(elementsize * initial_capacity)) != NULL;
+}
+
+size_t hash(const char* cstr)
+{
+	size_t ret = 5381;
+	int c;
+	while (c = *(cstr++))
+		ret = (ret << 5) + ret + c; //ret * 33 + c
+	return ret;
 }

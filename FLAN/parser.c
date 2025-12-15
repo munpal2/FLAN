@@ -1,10 +1,10 @@
 #include "parser.h"
 
 #define push_err(str) do { \
-	printf(color_err "Line %u: " str, psr->lookahead->col); \
+	printf(color_err "%s(Line %u): " str, psr->lookahead->filename, psr->lookahead->col); \
 	abort(); } while(0)
 
-#define push_warn(str) printf(color_warning "Line %u: " #str "\n", psr->lookahead->col)
+#define push_warn(str) printf(color_warn "%s(Line %u): " str "\n", psr->lookahead->filename, psr->lookahead->col)
 
 #define FIRST(smt) const token_type smt##_FIRST[]
 #define FOLLOW(smt) const token_type smt##_FOLLOW[]
@@ -28,7 +28,7 @@ const char* AST_strty[] = {"AST_TYUINT", "AST_DECL",    "AST_CONST",    "AST_PTR
                            "AST_IDX",    "AST_FUNC",     "AST_CALL",    "AST_FOR",     "AST_CHAR",
 	                       "AST_IDINIT", "AST_INITEXPR", "AST_TYFLOAT", "AST_TYBOOL",  "AST_TYCHAR"};
 
-AST_node* AST_node_create(AST_type type, const char* str, unsigned int col)
+AST_node* AST_node_create(AST_type type, const char* attr, const char* filename, unsigned int col)
 {
 	AST_node* ret = calloc(sizeof(AST_node), 1);
 	if (ret == NULL)
@@ -36,12 +36,14 @@ AST_node* AST_node_create(AST_type type, const char* str, unsigned int col)
 
 	ret->col = col;
 	ret->type = type;
-	if (str != NULL)
-		ret->attr = _strdup(str);
+	if (attr != NULL)
+		ret->attr = _strdup(attr);
+	if (filename != NULL)
+		ret->filename = _strdup(filename);
 	return ret;
 }
 
-#define node_create_q(type, str) AST_node_create(type, str, psr->lookahead->col)
+#define node_create_q(type, str) AST_node_create(type, str, psr->lookahead->filename, psr->lookahead->col)
 
 void AST_node_destroy(AST_node * dest)
 {
@@ -59,14 +61,14 @@ void AST_node_destroy(AST_node * dest)
 void psr_init(parser* psr, variable_arr* processed_tokens)
 {
 	psr->idx = 0;
-	psr->lookahead = varr_get(processed_tokens, token, 0);
+	psr->lookahead = varr_get(processed_tokens, 0);
 	psr->tokens = processed_tokens;
 	psr->root = NULL;
 }
 
 void psr_next(parser* psr)
 {
-	psr->lookahead = varr_get(psr->tokens, token, ++psr->idx);
+	psr->lookahead = varr_get(psr->tokens, ++psr->idx);
 }
 
 void psr_expect(parser* psr, token_type type)
@@ -76,7 +78,8 @@ void psr_expect(parser* psr, token_type type)
 		psr_next(psr);
 		return;
 	}
-	printf(color_err "Line %u: %s가 필요하지만 대신 %s가 있습니다.", psr->lookahead->col, token_strty[type], token_strty[psr->lookahead->type]);
+	printf(color_err "%s(Line %u): %s가 필요하지만 대신 %s가 있습니다.",
+		   psr->lookahead->filename, psr->lookahead->col, token_strty[type], token_strty[psr->lookahead->type]);
 	abort();
 }
 
@@ -257,12 +260,10 @@ element -> id
 		   int
 		   true
 		   false
-		   -float
-		   -int
 		   (expr)
 */
 FIRST(element) = {TK_ID,    TK_STR, TK_FLOAT, TK_UINT, TK_INT, TK_TRUE, 
-                  TK_FALSE, TK_MINUS};
+                  TK_FALSE};
 FOLLOW(element) = {TK_DEC, TK_INT, TK_DOT, TK_ARROW};
 
 static AST_node* parse_element(parser* psr)
@@ -274,24 +275,6 @@ static AST_node* parse_element(parser* psr)
 			AST_node* ret = node_create_q(TK_to_AST(psr->lookahead->type), psr->lookahead->attr);
 			psr_next(psr);
 			return ret;
-		}
-		case TK_MINUS:
-		{
-			psr_next(psr);
-			if (psr->lookahead->type == TK_INT || psr->lookahead->type == TK_FLOAT)
-			{
-				str_builder tmp;
-				str_builder_create(&tmp);
-				str_builder_add(&tmp, '-');
-				str_builder_add_str(&tmp, psr->lookahead->attr);
-				AST_node* ret = node_create_q(TK_to_AST(psr->lookahead->type), str_builder_pop(&tmp));
-				str_builder_destroy(&tmp);
-				psr_next(psr);
-				return ret;
-			}
-			else if (psr->lookahead->type == TK_UINT || psr->lookahead->type == TK_STR)
-				push_err("uint리터럴이나 문자열 앞에는 -가 올 수 없습니다.");
-			else goto handle_err;
 		}
 		case TK_OPEN_PAREN:
 		{
@@ -775,7 +758,8 @@ static AST_node* parse_stmt(parser* psr)
 		}
 		default:
 		{
-			printf(color_err "Line %u: 예상하지 못한 %s가 있습니다 \n", psr->lookahead->col, token_strty[psr->lookahead->type]);
+			printf(color_err "%s(Line %u): 예상하지 못한 %s가 있습니다 \n", 
+				   psr->lookahead->filename, psr->lookahead->col, token_strty[psr->lookahead->type]);
 			abort();
 		}
 	}

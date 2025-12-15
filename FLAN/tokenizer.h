@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hashtable.h"
+#include "pool.h"
 
 typedef enum token_type
 {
@@ -28,18 +29,25 @@ typedef struct token
 	token_type type;
 	unsigned int col;
 	char* attr;
+	char* filename;
 } token;
 
 typedef struct tokenizer 
 {
-	size_t token_cnt;
-	unsigned int col;
 	variable_arr result;
 	hash_table token_map;
-	file_poller fpl;
+	hash_table mcmd_map; //include, define등 매크로 커맨드용 해시테이블
+	hash_table macro_map;
+	variable_arr macro_condit;
+	variable_arr fileref_stack; //fileref_context 의 스택
+	variable_arr strref_stack; //strref_context 의 스택
 } tokenizer;
 
-void token_create(token* dest, token_type type, unsigned int col, char* attr);
+void token_create(token* dest, 
+	              token_type type, 
+	              unsigned int col,
+	              char* attr,
+	              char* filename);
 bool tknz_init(tokenizer* tknz, const char* filename);
 void tknz_destroy(tokenizer* tknz);
 const variable_arr* tokenize(tokenizer* tknz);

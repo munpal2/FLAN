@@ -1,5 +1,4 @@
 #pragma once
-
 #include "sementic.h"
 #include "irgen.h"
 

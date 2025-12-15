@@ -1,5 +1,9 @@
 #include "sementic.h"
 
+#define push_err(str) do { \
+	printf(color_err "Line %u: " str, target->col); \
+	abort(); } while(0)
+
 static void move_child(AST_node* to, AST_node* from)
 {
 	for (size_t i = 0; i < 4; i++)
@@ -16,7 +20,7 @@ NEQ -> NOT + EQ
 */
 static AST_node* unroll_to_not_node(AST_node* target)
 {
-	AST_node* not_node = AST_node_create(AST_NOT, NULL, target->col);
+	AST_node* not_node = AST_node_create(AST_NOT, NULL, target->filename, target->col);
 	AST_type outcome;
 	switch (target->type)
 	{
@@ -30,7 +34,7 @@ static AST_node* unroll_to_not_node(AST_node* target)
 		outcome = AST_EQ;
 		break;
 	}
-	AST_node* outcome_node = AST_node_create(outcome, NULL, target->col);
+	AST_node* outcome_node = AST_node_create(outcome, NULL, target->filename, target->col);
 	move_child(outcome_node, target);
 	not_node->children[0] = outcome_node;
 	AST_node_destroy(target);
@@ -49,7 +53,7 @@ void optimize_AST(AST_node* root)
 		{
 			case AST_LTE: case AST_GTE: case AST_NEQ:
 				root->children[i] = (node = unroll_to_not_node(node));
-				break;
+				break;				
 		}
 		optimize_AST(node);
 	}
