@@ -105,16 +105,6 @@ typedef struct ir
 	mvar_code dest;
 } ir;
 
-typedef enum literal_type_idx
-{
-	LTT_INT,
-	LTT_UINT,
-	LTT_CHAR,
-	LTT_BOOL,
-	LTT_FLOAT,
-	LTT_STR
-} literal_type_idx;
-
 typedef struct irgen
 {
 	variable_arr irs;
@@ -122,7 +112,6 @@ typedef struct irgen
 	hash_table str_addr; //key: str literal, value: long long int addr
 	addr_t data_end;
 	size_t irs_len;
-	tytree_node* literal_type[6]; //0:int, 1:uint, 2:char, 3:bool, 4:float, 5:str(const ptr of char)
 	size_t mvar_count;
 } irgen;
 

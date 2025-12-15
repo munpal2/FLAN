@@ -73,3 +73,8 @@ void* varr_get_impl(variable_arr* varr, size_t idx);
 #define color_sys_err color(220, 0, 0)
 #define color_err color(220, 130, 0)
 #define color_warn color(220, 220, 0)
+
+#define swap(a, b) \
+	do { a = a ^ b; \
+		 b = a ^ b; \
+		 a = a ^ b; } while (0)

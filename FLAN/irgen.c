@@ -90,29 +90,18 @@ void irgen_create(irgen* irg)
 	varr_create(&(irg->irs), ir, 100);
 	htb_create(&(irg->str_addr), addr_t);
 	syt_create(&(irg->syt));
+	lit_types_init();
 	irg->irs_len = 0;
 	irg->data_end = 0;
 	irg->mvar_count = 2;
-
-	irg->literal_type[LTT_INT] = tytreend_create(TYTR_INT, 0);
-	irg->literal_type[LTT_UINT] = tytreend_create(TYTR_UINT, 0);
-	irg->literal_type[LTT_CHAR] = tytreend_create(TYTR_CHAR, 0);
-	irg->literal_type[LTT_BOOL] = tytreend_create(TYTR_BOOL, 0);
-	irg->literal_type[LTT_FLOAT] = tytreend_create(TYTR_FLOAT, 0);
-
-	irg->literal_type[LTT_STR] = tytreend_create(TYTR_CONST, 0);
-	irg->literal_type[LTT_STR]->children[0] = tytreend_create(TYTR_PTROF, 0);
-	irg->literal_type[LTT_STR]->children[0]->children[0] = tytreend_create(TYTR_CHAR, 0);
 }
 
 void irgen_destroy(irgen* irg)
 {
+	lit_types_destroy();
 	varr_destroy(&(irg->irs));
 	syt_destroy(&(irg->syt));
 	htb_destroy(&(irg->str_addr));
-
-	for (size_t i = 0; i < 6; i++)
-		tytree_destroy(irg->literal_type[i]);
 }
 
 ir* irgen_push(irgen* irg, ir_type type, mvar_code mvcode)
@@ -152,12 +141,12 @@ static tytree_node* emitRval_str(AST_node* node, irgen* irg, mvar_code mvcode)
 		*inserted = str_addr;
 
 		new->op2.addr = str_addr;
-		return irg->literal_type[LTT_STR];
+		return literal_type[LTT_STR];
 	}
 	else
 	{
 		new->op2.addr = *found_addr;
-		return irg->literal_type[LTT_STR];
+		return literal_type[LTT_STR];
 	}
 }
 
@@ -169,7 +158,7 @@ LOAD_CONST BYTE, value, ret
 ir_access_size literal_size[] = { SZ_QWORD, SZ_QWORD, SZ_BYTE, SZ_BYTE, SZ_QWORD, SZ_QWORD };
 static tytree_node* emitRval_literal(AST_node* node, irgen* irg, mvar_code mvcode, literal_type_idx idx)
 {
-	ir* new = irgen_push(irg, IR_LOADCONST, ret);
+	ir* new = irgen_push(irg, IR_LOADCONST, mvcode);
 	new->op1.asize = literal_size[idx];
 	switch (idx)
 	{
@@ -192,40 +181,68 @@ static tytree_node* emitRval_literal(AST_node* node, irgen* irg, mvar_code mvcod
 		new->op2.flt = atof(node->attr);
 		break;
 	}
-	return irg->literal_type[idx];
+	return literal_type[idx];
 }
 
-static void load_binop_args(AST_node* node, irgen* irg, mvar_code left, mvar_code right, tytree_node** ltype, tytree_node** rtype)
+
+static inline tytree_node* emitRval_binopr_ptrint(AST_node* node, irgen* irg, mvar_code mvcode,
+	                                              mvar_code ptr_mv,  tytree_node* ptrtype,
+	                                              mvar_code int_mv, tytree_node* inttype)
 {
-	*ltype = emitRval(node->children[0], irg, left);
-	*rtype = emitRval(node->children[1], irg, right);
+	if (node->type != AST_ADD && node->type != AST_SUB)
+		push_err("포인터와 정수 간의 연산은 덧셈과 뺄셈만 가능합니다. \n");
+
+	addr_t ptr_size = tytree_sizeof(tytree_get_element_type(ptrtype));
+	irgen_push
 }
 
-static tytree_node* emitRval_arithmetic(AST_node* node, irgen* irg, mvar_code mvcode)
+static inline tytree_node* emitRval_binopr_intint(AST_node* node, irgen* irg, mvar_code mvcode,
+	                                              mvar_code left_mv, tytree_node* ltype,
+	                                              mvar_code right_mv, tytree_node* rtype)
+{
+	bool l_is_ptr = tytree_is_ptr(ltype);
+	bool r_is_ptr = tytree_is_ptr(rtype);
+	if (l_is_ptr && r_is_ptr)
+		push_err("포인터 간 덧셈 연산은 불가능합니다.\n");
+	else if (l_is_ptr)
+		return emitRval_binopr_ptrint(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+	else if (r_is_ptr)
+		return emitRval_binopr_ptrint(node, irg, mvcode, right_mv, rtype, left_mv, ltype);
+	else
+	{
+		ir* new = irgen_push(irg, IR_ADD, mvcode);
+		new->op1.mvcode = left_mv;
+		new->op2.mvcode = right_mv;
+		new->dest = mvcode;
+		return literal_type[LTT_INT];
+	}
+}
+
+static inline tytree_node* emitRval_binopr_fltflt(AST_node* node, irgen* irg, mvar_code mvcode,
+	                                              mvar_code left_mv, tytree_node* ltype,
+	                                              mvar_code right_mv, tytree_node* rtype)
+{
+
+}
+
+static tytree_node* emitRval_binopr(AST_node* node, irgen* irg, mvar_code mvcode)
 {
 	mvar_code left_mv = new_mvar(irg);
+	tytree_node* ltype = emitRval(node->children[0], irg, left_mv);
 	mvar_code right_mv = new_mvar(irg);
-	tytree_node *ltype, *rtype;
-	load_binop_args(node, irg, left_mv, right_mv, &ltype, &rtype);
+	tytree_node* rtype = emitRval(node->children[1], irg, right_mv);
 
-	if (!tytree_eq(ltype, rtype))
-	{
-		push_err("산술 연산자의 피연산자 타입이 일치하지 않습니다.");
-	}
+	ltype = tytree_get_base_type(ltype);
+	rtype = tytree_get_base_type(rtype);
 
-	ir_type irt;
-	switch (node->type)
-	{
-		case AST_ADD: irt = IR_ADD; break;
-		case AST_SUB: irt = IR_SUB; break;
-		case AST_MUL: irt = IR_MUL; break;
-		case AST_DIV: irt = IR_DIV; break;
-		case AST_MOD: irt = IR_MOD; break;
-	}
-	ir* new = irgen_push(irg, irt, mvcode);
-	new->op1.mvcode = left_mv;
-	new->op2.mvcode = right_mv;
-	return ltype; //임시로 왼쪽 타입 반환
+	bool l_is_int = tytree_is_nearint(ltype);
+	bool r_is_int = tytree_is_nearint(rtype);
+	if (l_is_int && r_is_int)
+		return emitRval_binopr_intint(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+	else if (!l_is_int && !r_is_int)
+		return emitRval_binopr_fltflt(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+	else
+		push_err("덧셈 연산에 적절하지 않습니다.\n");
 }
 
 static tytree_node* emitRval_id(AST_node* node, irgen* irg, mvar_code mvcode)

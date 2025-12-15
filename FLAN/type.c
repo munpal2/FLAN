@@ -111,3 +111,39 @@ addr_t tytree_sizeof(tytree_node* root)
 		return size[root->type];
 	}
 }
+
+tytree_node* literal_type[6];
+void lit_types_init()
+{
+	literal_type[LTT_INT] = tytreend_create(TYTR_INT, 0);
+	literal_type[LTT_UINT] = tytreend_create(TYTR_UINT, 0);
+	literal_type[LTT_CHAR] = tytreend_create(TYTR_CHAR, 0);
+	literal_type[LTT_BOOL] = tytreend_create(TYTR_BOOL, 0);
+	literal_type[LTT_FLOAT] = tytreend_create(TYTR_FLOAT, 0);
+	literal_type[LTT_STR] = tytreend_create(TYTR_PTROF, 0);
+	literal_type[LTT_STR]->children[0] = tytreend_create(TYTR_CONST, 0);
+	literal_type[LTT_STR]->children[0]->children[0] = tytreend_create(TYTR_CHAR, 0);
+}
+
+void lit_types_destroy()
+{
+	for (size_t i = 0; i < 6; i++)
+		tytree_destroy(literal_type[i]);
+}
+
+bool tytree_is_nearint(tytree_node* type)
+{
+	type = tytree_get_base_type(type);
+	switch (type->type)
+	{
+	case TYTR_INT:
+	case TYTR_UINT:
+	case TYTR_CHAR:
+	case TYTR_BOOL:
+	case TYTR_PTROF:
+	case TYTR_ARROF:
+		return true;
+	case TYTR_FLOAT:
+		return false;
+	}
+}
