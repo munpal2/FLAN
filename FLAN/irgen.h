@@ -37,7 +37,6 @@ void sym_create(symbol* sym, addr_type atype, addr_t addr, tytree_node* type);
 typedef struct symbol_table
 {
 	variable_arr varr;
-	size_t depth;
 	size_t stack_bottom;
 	bool in_func_block;
 } symbol_table;
@@ -50,15 +49,15 @@ void syt_insertf(symbol_table* syt, AST_node* fdecltree);
 
 inline void syt_enter(symbol_table* syt)
 {
-	htb_create(varr_get(&(syt->varr), hash_table, (syt->depth)++), symbol);
+	htb_create(varr_push(&(syt->varr)), symbol);
 }
 
 inline void syt_exit(symbol_table* syt)
 {
-	hash_table* cur = varr_get(&(syt->varr), hash_table, syt->depth - 1);
+	hash_table* cur = varr_back(&(syt->varr));
 	htb_foreach(cur, sym_destroy);
 	htb_destroy(cur);
-	syt->depth--;
+	varr_pop(&(syt->varr));
 }
 
 typedef enum ir_type
@@ -69,8 +68,10 @@ typedef enum ir_type
 	IR_NOT,   IR_CMP,     IR_GT,        IR_LT,       IR_JMP,
 	IR_JZ,    IR_JNZ,     IR_CALL,      IR_RET,      IR_ALLOC,
 	IR_FREE,  IR_SYSCALL, IR_LOADCONST, IR_MOVE,     IR_ADDF,
-	IR_SUBF,  IR_MULF,    IR_DIVF
+	IR_SUBF,  IR_MULF,    IR_DIVF,      IR_ITOF,     IR_FTOI,
+	IR_NEGF,  IR_CMPF
 } ir_type;
+extern const char* ir_strty[];
 
 typedef enum ir_access_size
 {
@@ -91,29 +92,15 @@ typedef union qword
 	double flt;
 	long long int dec;
 	addr_t addr;
-	bool boolean;
 	ir_access_size asize;
 	mvar_code mvcode; //0:EBP, 1:ESP, 2:T0, 3:T1, ...
-	char ch;
 } qword;
 
 typedef struct ir
 {
 	ir_type type;
-	qword op1;
-	qword op2;
-	mvar_code dest;
+	qword args[3]; //op1, op2, dest
 } ir;
-
-typedef enum literal_type_idx
-{
-	LTT_INT,
-	LTT_UINT,
-	LTT_CHAR,
-	LTT_BOOL,
-	LTT_FLOAT,
-	LTT_STR
-} literal_type_idx;
 
 typedef struct irgen
 {
@@ -121,12 +108,10 @@ typedef struct irgen
 	symbol_table syt;
 	hash_table str_addr; //key: str literal, value: long long int addr
 	addr_t data_end;
-	size_t irs_len;
-	tytree_node* literal_type[6]; //0:int, 1:uint, 2:char, 3:bool, 4:float, 5:str(const ptr of char)
 	size_t mvar_count;
 } irgen;
 
 void irgen_create(irgen* irg);
 void irgen_destroy(irgen* irg);
 void irgen_gen(irgen* irg, AST_node* root);
-ir* irgen_push(irgen* irg, ir_type type, mvar_code mvcode);
+ir* irgen_push(irgen* irg, ir_type type, addr_t addr);

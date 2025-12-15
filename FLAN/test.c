@@ -39,18 +39,18 @@ static void symbol_show(symbol* sym)
 
 static void syt_show(symbol_table* syt)
 {
-	for (size_t i = 0; i < syt->depth; i++)
+	for (size_t i = 0; i < syt->varr.size; i++)
 	{
-		htb_foreach(varr_get((&syt->varr), hash_table, i), symbol_show);
+		htb_foreach(varr_get((&syt->varr), i), symbol_show);
 	}
 }
 
 static void token_show(variable_arr* tokens)
 {
-	for (size_t i = 0; varr_get(tokens, token, i)->type != TK_END; i++)
+	for (size_t i = 0; ((token*)varr_get(tokens, i))->type != TK_END; i++)
 	{
-		token* elem = varr_get(tokens, token, i);
-		printf("Line %u : <%s, %s>\n", elem->col, elem->attr, token_strty[elem->type]);
+		token* elem = varr_get(tokens, i);
+		printf("%s(Line %u): <%s, %s>\n", elem->filename, elem->col, elem->attr, token_strty[elem->type]);
 	}
 }
 
@@ -78,8 +78,123 @@ static void node_show(AST_node* node, size_t depth, const char* idx)
 		node_show(node->next, depth, "[+] ");
 }
 
+typedef enum ir_arg_type
+{
+	MVCODE,
+	ADDR,
+	RAW,
+	ASIZE,
+	NONE
+} ir_arg_type;
+
+ir_arg_type ir_arg_types[37][3] = {
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, NONE, NONE},
+	{MVCODE, NONE, NONE},
+	{ASIZE, MVCODE, MVCODE},
+	{ASIZE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{NONE, ADDR, NONE},
+	{MVCODE, ADDR, NONE},
+	{MVCODE, ADDR, NONE},
+	{ADDR, NONE, NONE},
+	{NONE, NONE, NONE},
+	{RAW, NONE, MVCODE},
+	{MVCODE, NONE, NONE},
+	{MVCODE, RAW, MVCODE},
+	{RAW, NONE, MVCODE}, //load_const
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, NONE, MVCODE},
+	{MVCODE, MVCODE, MVCODE},
+};
+
+static void IR_arg_show(qword arg, ir_arg_type arg_type)
+{
+	switch (arg_type)
+	{
+		case MVCODE:
+		{
+			if (arg.mvcode == EBP_MVCODE)
+				printf("EBP");
+			else if (arg.mvcode == ESP_MVCODE)
+				printf("ESP");
+			else
+				printf("T%llu", arg.mvcode - 2);
+			break;
+		}
+		case ADDR:
+		{
+			printf("0x%llx", arg.addr);
+			break;
+		}
+		case RAW:
+		{
+			printf("%lld(%lff)", arg.dec, arg.flt); 
+			break;
+		}
+		case ASIZE:
+		{
+			switch (arg.asize)
+			{
+			case SZ_BYTE:
+				printf("BYTE");
+				break;
+			case SZ_WORD:
+				printf("WORD");
+				break;
+			case SZ_DWORD:
+				printf("DWORD");
+				break;
+			case SZ_QWORD:
+				printf("QWORD");
+				break;
+			}
+			break;
+		}
+	}
+}
+
+const char* arg_suffix[] = { ", ", " -> ", "\n" };
+static void irg_show(irgen* irg)
+{
+	for (size_t i = 0; i < irg->irs.size; i++)
+	{
+		ir* elem = varr_get(&(irg->irs), i);
+		printf("[%03llu] ", i);
+		printf("%s: ", ir_strty[elem->type]);
+		for (size_t j = 0; j < 3; j++)
+		{
+			if (ir_arg_types[elem->type][j] != NONE)
+			{
+				IR_arg_show(elem->args[j], ir_arg_types[elem->type][j]);
+				printf("%s", arg_suffix[j]);
+			}
+		}
+	}
+}
+
 void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
 {
+	pool_create(&global_strpool);
 	tokenizer tknz;
 	tknz_init(&tknz, filename);
 	variable_arr* tknzed = tokenize(&tknz);
@@ -106,12 +221,13 @@ void test_file(const char* filename, unsigned int flag) //토크나이저 테스트하깅
 		puts(color(0, 220, 0) "\n[[ parsing complete! ]]" color_clear "\n");
 	}
 
-	//symbol_table syt;
-	//syt_create(&syt);
-	//syt_insertf(&syt, result);
-	//syt_show(&syt);
-	//syt_destroy(&syt);
+	irgen irg;
+	irgen_create(&irg);
+	irgen_gen(&irg, result);
+	irg_show(&irg);
+	irgen_destroy(&irg);
 
 	tknz_destroy(&tknz);
 	psr_destroy(&psr);
+	pool_destroy(&global_strpool);
 }

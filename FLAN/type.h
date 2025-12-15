@@ -22,6 +22,19 @@ typedef struct tytree_node
 	size_t len; //TYTR_ARROF에만 사용
 } tytree_node;
 
+typedef enum literal_type_idx
+{
+	LTT_INT,
+	LTT_UINT,
+	LTT_CHAR,
+	LTT_BOOL,
+	LTT_FLOAT,
+	LTT_STR
+} literal_type_idx;
+extern tytree_node* literal_type[6];
+void lit_types_init();
+void lit_types_destroy();
+
 tytree_node* tytreend_create(tytree_type type, size_t len);
 tytree_node* func_from_AST(AST_node* funcnode, size_t pidx, size_t ridx);
 tytree_node* from_AST(AST_node* ast);
@@ -41,3 +54,16 @@ inline tytree_node* tytree_get_base_type(tytree_node* type)
 {
 	return (type->type == TYTR_CONST) ? type->children[0] : type;
 }// const를 벗긴 기본 타입 반환
+
+inline bool tytree_is_const(tytree_node* type)
+{
+	return (type->type == TYTR_CONST);
+}// 타입이 const인지 확인
+
+inline bool tytree_is_ptr(tytree_node* type)
+{
+	type = tytree_get_base_type(type);
+	return (type->type == TYTR_PTROF);
+}// 타입이 포인터인지 확인
+
+bool tytree_is_nearint(tytree_node* type);

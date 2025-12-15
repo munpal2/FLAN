@@ -27,11 +27,12 @@ typedef struct AST_node
 	unsigned int type;
 	unsigned int col;
 	char* attr;
+	char* filename;
 	struct AST_node* next;
 	struct AST_node* children[4];
 } AST_node;
 
-AST_node* AST_node_create(AST_type type, const char* str, unsigned int col);
+AST_node* AST_node_create(AST_type type, const char* attr, const char* filename, unsigned int col);
 void AST_node_destroy(AST_node* dest);
 
 typedef struct parser 

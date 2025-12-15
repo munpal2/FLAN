@@ -28,9 +28,6 @@
     <ClCompile Include="type.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="pool.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="hashtable.h">
@@ -57,12 +54,6 @@
     <ClInclude Include="type.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="pool.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="include.fe">
-      <Filter>리소스 파일\test</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md">
@@ -73,9 +64,6 @@
     </None>
     <None Include="docs\ir_spec.md">
       <Filter>리소스 파일\docs</Filter>
-    </None>
-    <None Include="irtest.fe">
-      <Filter>리소스 파일\test</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
