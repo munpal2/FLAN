@@ -1,18 +1,20 @@
 #include "irgen.h"
 
-#define push_err(str) do { \
-	printf(color_err "Line %u: " str, node->col); \
-	abort(); } while(0)
+static void push_err(AST_node* node, const char* str)
+{
+	printf(color_err "%s(Line %u): %s", node->filename, node->col, str); 
+	abort();
+}
 
 const char* ir_strty[] = {
 	"ADD",   "SUB",     "MUL",       "DIV",      "MOD",
 	"NEG",   "INC",     "DEC",       "LOAD",     "STORE",
-	"AND",   "OR",      "XOR",       "LSHF",     "RSHF",
+	"AND",   "OR",      "XOR",       "LSH",      "RSH",
 	"NOT",   "CMP",     "GT",        "LT",       "JMP",
 	"JZ",    "JNZ",     "CALL",      "RET",      "ALLOC",
-	"FREE",  "SYSCALL", "LOADCONST","MOVE",     "ADDF",
+	"FREE",  "SYSCALL", "LOADCONST", "MOVE",     "ADDF",
 	"SUBF",  "MULF",    "DIVF",      "ITOF",     "FTOI",
-	"NEGF",  "CMPF"
+	"NEGF",  "GTF",     "LTF",       "MEMCPY"    "ERR"
 };
 
 void sym_create(symbol* sym, addr_type atype, addr_t addr, tytree_node* type)
@@ -66,6 +68,13 @@ void syt_insert(symbol_table* syt, AST_node* decltree)
 		AST_node* id_node = idinit_head->children[0];
 		tytree_node* type_tree = from_AST(type);
 		offset -= tytree_sizeof(type_tree);
+		
+		bool is_defined = htb_find(cur, id_node->attr) != NULL;
+		if (is_defined)
+		{
+			printf(color_err "%s(Line %u): 변수 %s가 재정의되었습니다.\n", id_node->filename, id_node->col, id_node->attr);
+			abort();
+		}
 		sym_create(htb_insert(cur, id_node->attr), ADDR_REL, offset, type_tree);
 		idinit_head = idinit_head->next;
 	}
@@ -97,63 +106,109 @@ ir_access_size tytree_to_irsize(tytree_node* type)
 
 void irgen_create(irgen* irg)
 {
+	varr_create(&(irg->type_storage), tytree_node*, 256);
 	varr_create(&(irg->irs), ir, 100);
+	varr_create(irg->section + DATA_SECTION, char, 2048);
+	varr_create(irg->section + GLOBAL_SECTION, char, 2048);
+	for (size_t i = DATA_SECTION; i <= REG_SECTION; i++)
+	{
+		varr_create(irg->addr_on + i, qword*, 100);
+	}
+
 	htb_create(&(irg->str_addr), addr_t);
 	syt_create(&(irg->syt));
 	lit_types_init();
-	irg->data_end = 0;
-	irg->mvar_count = 2;
+	irg->reg_count = 2;
 }
 
 void irgen_destroy(irgen* irg)
 {
 	lit_types_destroy();
+	tytree_node** arrayified = irg->type_storage.data;
+	for (size_t i = 0; i < irg->type_storage.size; i++)
+	{
+		tytree_destroy(arrayified[i]);
+	}
+	varr_destroy(&(irg->type_storage));
+
 	varr_destroy(&(irg->irs));
+	for (size_t i = 0; i < irg->section[DATA_SECTION].size; i++)
+	{
+		char ch = *(char*)varr_get(irg->section + DATA_SECTION, i);
+		printf("%hhd(%c) ", ch, ch);
+	}
+
+	varr_destroy(irg->section + DATA_SECTION);
+	varr_destroy(irg->section + GLOBAL_SECTION);
+	for (size_t i = DATA_SECTION; i < REG_SECTION; i++)
+	{
+		varr_destroy(irg->addr_on + i);
+	}
+
 	syt_destroy(&(irg->syt));
 	htb_destroy(&(irg->str_addr));
 }
 
-ir* irgen_push(irgen* irg, ir_type type, addr_t addr)
+static void set_addr(irgen* irg, ir* dest_ir, size_t num, addr_t addr)
+{
+	dest_ir->args[num].addr = addr;
+	section_type idxof_addr_on = (addr && 0xff00000000000000LL) >> 56LL;
+	if (idxof_addr_on >= CODE_SECTION) //이건 추적 안해도 됨
+		return;
+	qword** mark_dest = varr_push(irg->addr_on + idxof_addr_on);
+	*mark_dest = dest_ir->args + num;
+}
+
+ir* irgen_push(irgen* irg, ir_type type, addr_t dest)
 {
 	ir* new_ir = varr_push(&(irg->irs));
 	new_ir->type = type;
-	new_ir->args[2].addr = addr;
+	set_addr(irg, new_ir, 2, dest);
 	return new_ir;
 }
 
-static inline mvar_code new_mvar(irgen* irg)
+static inline addr_t new_reg(irgen* irg)
 {
-	return irg->mvar_count++;
+	return (irg->reg_count++ * 8LL) | ADDR_ON_REG;
 }
 
 static void emitNval(AST_node* node, irgen* irg);
-static tytree_node* emitRval(AST_node* node, irgen* irg, mvar_code mvcode);
-static tytree_node* emitLval(AST_node* node, irgen* irg, mvar_code mvcode);
+static tytree_node* emitRval(AST_node* node, irgen* irg, addr_t addr);
+static tytree_node* emitLval(AST_node* node, irgen* irg, addr_t addr);
 
-static tytree_node* emitLval(AST_node* node, irgen* irg, mvar_code mvcode) //ret에 Lvalue를 저장해주시오
+static tytree_node* emitLval(AST_node* node, irgen* irg, addr_t addr) //ret에 Lvalue를 저장해주시오
 {
 
 }
 
-static tytree_node* emitRval_str(AST_node* node, irgen* irg, mvar_code mvcode)
+static tytree_node* emitRval_str(AST_node* node, irgen* irg, addr_t addr)
 {
-	ir* new = irgen_push(irg, IR_LOADCONST, mvcode);
+	ir* new = irgen_push(irg, IR_LOADCONST, addr);
 
 	addr_t* found_addr = htb_find(&(irg->str_addr), node->attr);
 	if (found_addr == NULL)
 	{
+		variable_arr* data_section = irg->section + DATA_SECTION;
 		size_t str_len = strlen(node->attr) + 1;
-		size_t str_addr = irg->data_end;
-		irg->data_end += str_len;
+		size_t str_offset = data_section->size;
+		addr_t str_address = ADDR_ON_DATA | data_section->size; //string data는 DATA section에 있음
 		addr_t* inserted = htb_insert(&(irg->str_addr), node->attr);
-		*inserted = str_addr;
+		*inserted = str_address;
 
-		new->args[0].addr = str_addr;
+		/*
+		기능 1 : size를 늘리기
+		기능 2 : memcpy 할 때 메모리 공간 초과하지 않도록 str_address + str_len이 존재함을 보증하기
+		*/
+		varr_get(data_section, str_offset + str_len);
+		char* start = (char*)data_section->data + str_offset;
+		memcpy(start, node->attr, str_len);
+
+		set_addr(irg, new, 0, str_address);
 		return literal_type[LTT_STR];
 	}
 	else
 	{
-		new->args[0].addr = *found_addr;
+		set_addr(irg, new, 0, *found_addr);
 		return literal_type[LTT_STR];
 	}
 }
@@ -162,9 +217,9 @@ static tytree_node* emitRval_str(AST_node* node, irgen* irg, mvar_code mvcode)
 LOAD_CONST value, ret
 */
 ir_access_size literal_size[] = { SZ_QWORD, SZ_QWORD, SZ_BYTE, SZ_BYTE, SZ_QWORD, SZ_QWORD };
-static tytree_node* emitRval_literal(AST_node* node, irgen* irg, mvar_code mvcode, literal_type_idx idx)
+static tytree_node* emitRval_literal(AST_node* node, irgen* irg, addr_t addr, literal_type_idx idx)
 {
-	ir* new = irgen_push(irg, IR_LOADCONST, mvcode);
+	ir* new = irgen_push(irg, IR_LOADCONST, addr);
 	switch (idx)
 	{
 	case LTT_INT:
@@ -189,45 +244,86 @@ static tytree_node* emitRval_literal(AST_node* node, irgen* irg, mvar_code mvcod
 	return literal_type[idx];
 }
 
-
-static inline tytree_node* emitRval_binopr_ptrint(AST_node* node, irgen* irg, mvar_code mvcode,
-	mvar_code ptr_mv, tytree_node* ptrtype,
-	mvar_code int_mv, tytree_node* inttype)
+static tytree_node* emitRval_binopr_ptrptr(AST_node* node, irgen* irg, addr_t addr,
+	addr_t left_addr, tytree_node* ltype,
+	addr_t right_addr, tytree_node* rtype)
 {
-	if (node->type != AST_ADD && node->type != AST_SUB)
-		push_err("포인터와 정수 간의 연산은 덧셈과 뺄셈만 가능합니다. \n");
+	if (!tytree_eq(ltype, rtype))
+		push_err(node, "서로 다른 타입의 포인터는 서로 연산할 수 없습니다.");
+	
+	ir_type ir_type = IR_ERR;
+	switch (node->type)
+	{
+	case AST_BOR: ir_type = IR_OR; break;
+	case AST_BXOR: ir_type = IR_XOR; break;
+	case AST_BAND: ir_type = IR_AND; break;
+	default:
+		push_err(node, "포인터와 포인터 사이에서 정의되지 않은 연산자입니다.");
+	}
 
-	mvar_code elem_size_mv = new_mvar(irg);
-	ir* new = irgen_push(irg, IR_LOADCONST, elem_size_mv);
+	ir* new = irgen_push(irg, ir_type, addr);
+	set_addr(irg, new, 0, left_addr);
+	set_addr(irg, new, 1, right_addr);
+	return ltype; //ltype == rtype
+}
+
+static tytree_node* emitRval_addsub_ptrint(AST_node* node, irgen* irg, addr_t dest_addr,
+	addr_t ptr_addr, tytree_node* ptrtype,
+	addr_t int_addr, tytree_node* inttype)
+{
+	addr_t elem_size_addr = new_reg(irg);
+	ir* new = irgen_push(irg, IR_LOADCONST, elem_size_addr);
 	addr_t elem_size = tytree_sizeof(tytree_get_element_type(ptrtype));
-	new->args[0].asize = SZ_QWORD;
-	new->args[1].dec = elem_size;
+	new->args[0].dec = elem_size;
 
-	new = irgen_push(irg, IR_MUL, int_mv);
-	new->args[0].mvcode = int_mv;
-	new->args[1].mvcode = elem_size_mv;
+	new = irgen_push(irg, IR_MUL, int_addr);
+	set_addr(irg, new, 0, int_addr);
+	set_addr(irg, new, 1, elem_size_addr);
 
-	new = irgen_push(irg, (node->type == AST_ADD) ? IR_ADD : IR_SUB, mvcode);
-	new->args[0].mvcode = ptr_mv;
-	new->args[1].mvcode = int_mv;
+	new = irgen_push(irg, (node->type == AST_ADD) ? IR_ADD : IR_SUB, dest_addr);
+	set_addr(irg, new, 0, ptr_addr);
+	set_addr(irg, new, 1, int_addr);
 	return ptrtype;
 }
 
-static inline tytree_node* emitRval_binopr_intint(AST_node* node, irgen* irg, mvar_code mvcode,
-	mvar_code left_mv, tytree_node* ltype,
-	mvar_code right_mv, tytree_node* rtype)
+static tytree_node* emitRval_binopr_ptrint(AST_node* node, irgen* irg, addr_t dest_addr,
+	addr_t ptr_addr, tytree_node* ptrtype,
+	addr_t int_addr, tytree_node* inttype)
+{
+	ir_type ir_type = IR_ERR;
+	switch (node->type)
+	{
+	case AST_ADD:
+	case AST_SUB:
+		return emitRval_addsub_ptrint(node, irg, dest_addr, ptr_addr, ptrtype, int_addr, inttype);
+	case AST_BOR: ir_type = IR_OR; break;
+	case AST_BXOR: ir_type = IR_XOR; break;
+	case AST_BAND: ir_type = IR_AND; break;
+	default:
+		push_err(node, "포인터와 정수 사이에서 정의되지 않은 연산자입니다.");
+	}
+
+	ir* new = irgen_push(irg, ir_type, dest_addr);
+	set_addr(irg, new, 0, ptr_addr);
+	set_addr(irg, new, 1, int_addr);
+	return ptrtype;
+}
+
+static tytree_node* emitRval_binopr_intint(AST_node* node, irgen* irg, addr_t dest_addr,
+	addr_t left_addr, tytree_node* ltype,
+	addr_t right_addr, tytree_node* rtype)
 {
 	bool l_is_ptr = tytree_is_ptr(ltype);
 	bool r_is_ptr = tytree_is_ptr(rtype);
 	if (l_is_ptr && r_is_ptr)
-		push_err("포인터 간 연산은 불가능합니다.\n");
+		return emitRval_binopr_ptrptr(node, irg, dest_addr, left_addr, ltype, right_addr, rtype);
 	else if (l_is_ptr)
-		return emitRval_binopr_ptrint(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+		return emitRval_binopr_ptrint(node, irg, dest_addr, left_addr, ltype, right_addr, rtype);
 	else if (r_is_ptr)
-		return emitRval_binopr_ptrint(node, irg, mvcode, right_mv, rtype, left_mv, ltype);
+		return emitRval_binopr_ptrint(node, irg, dest_addr, right_addr, rtype, left_addr, ltype);
 	else
 	{
-		ir_type ir_type;
+		ir_type ir_type = IR_ERR;
 		switch (node->type)
 		{
 		case AST_ADD: ir_type = IR_ADD; break;
@@ -235,22 +331,25 @@ static inline tytree_node* emitRval_binopr_intint(AST_node* node, irgen* irg, mv
 		case AST_MUL: ir_type = IR_MUL; break;
 		case AST_DIV: ir_type = IR_DIV; break;
 		case AST_MOD: ir_type = IR_MOD; break;
+		case AST_BOR: ir_type = IR_OR; break;
+		case AST_BXOR: ir_type = IR_XOR; break;
+		case AST_BAND: ir_type = IR_AND; break;
 		default:
-			push_err("정수와 정수 사이에서 정의되지 않은 연산자입니다.");
+			push_err(node, "정수와 정수 사이에서 정의되지 않은 연산자입니다.\n");
 		}
 
-		ir* new = irgen_push(irg, ir_type, mvcode);
-		new->args[0].mvcode = left_mv;
-		new->args[1].mvcode = right_mv;
+		ir* new = irgen_push(irg, ir_type, dest_addr);
+		set_addr(irg, new, 0, left_addr);
+		set_addr(irg, new, 1, right_addr);
 		return literal_type[LTT_INT]; //int로 업캐스팅
 	}
 }
 
-static inline tytree_node* emitRval_binopr_fltflt(AST_node* node, irgen* irg, mvar_code mvcode,
-	mvar_code left_mv, tytree_node* ltype,
-	mvar_code right_mv, tytree_node* rtype)
+static tytree_node* emitRval_binopr_fltflt(AST_node* node, irgen* irg, addr_t dest_addr,
+	addr_t left_addr, tytree_node* ltype,
+	addr_t right_addr, tytree_node* rtype)
 {
-	ir_type ir_type;
+	ir_type ir_type = IR_ERR;
 	switch (node->type)
 	{
 	case AST_ADD: ir_type = IR_ADDF; break;
@@ -258,76 +357,155 @@ static inline tytree_node* emitRval_binopr_fltflt(AST_node* node, irgen* irg, mv
 	case AST_MUL: ir_type = IR_MULF; break;
 	case AST_DIV: ir_type = IR_DIVF; break;
 	default:
-		push_err("실수와 실수 간에서 정의되지 않은 연산자입니다.\n");
+		push_err(node, "실수와 실수 간에서 정의되지 않은 연산자입니다.\n");
 	}
 
-	ir* new = irgen_push(irg, ir_type, mvcode);
-	new->args[0].mvcode = left_mv;
-	new->args[1].mvcode = right_mv;
-	return literal_type[LTT_FLOAT]; //int로 업캐스팅
+	ir* new = irgen_push(irg, ir_type, dest_addr);
+	set_addr(irg, new, 0, left_addr);
+	set_addr(irg, new, 1, right_addr);
+	return literal_type[LTT_FLOAT];
 }
 
-static tytree_node* emitRval_binopr(AST_node* node, irgen* irg, mvar_code mvcode)
+static tytree_node* emitRval_binopr(AST_node* node, irgen* irg, addr_t dest_addr,
+	addr_t left_addr, tytree_node* ltype,
+	addr_t right_addr, tytree_node* rtype)
 {
-	mvar_code left_mv = new_mvar(irg);
-	tytree_node* ltype = emitRval(node->children[0], irg, left_mv);
-	mvar_code right_mv = new_mvar(irg);
-	tytree_node* rtype = emitRval(node->children[1], irg, right_mv);
-
-	ltype = tytree_get_base_type(ltype);
-	rtype = tytree_get_base_type(rtype);
-
 	bool l_is_int = tytree_is_nearint(ltype);
 	bool r_is_int = tytree_is_nearint(rtype);
 	if (l_is_int && r_is_int)
-		return emitRval_binopr_intint(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+		return emitRval_binopr_intint(node, irg, dest_addr, left_addr, ltype, right_addr, rtype);
 	else if (!l_is_int && !r_is_int)
-		return emitRval_binopr_fltflt(node, irg, mvcode, left_mv, ltype, right_mv, rtype);
+		return emitRval_binopr_fltflt(node, irg, dest_addr, left_addr, ltype, right_addr, rtype);
 	else
-		push_err("서로 연산이 가능한 자료형이 아닙니다. 캐스팅을 시도하세요.\n");
+		push_err(node, "서로 연산이 가능한 자료형이 아닙니다. 캐스팅을 시도하세요. \n");
 }
 
-static tytree_node* emitRval_id(AST_node* node, irgen* irg, mvar_code mvcode)
+static tytree_node* emitRval_unaryopr(AST_node* node, irgen* irg, addr_t dest_addr,
+	                                  addr_t left_addr, tytree_node* ltype)
+{
+
+}
+
+static tytree_node* emitRval_expr(AST_node* node, irgen* irg, addr_t addr)
+{
+	addr_t left_addr = new_reg(irg);
+	tytree_node* ltype = emitRval(node->children[0], irg, left_addr);
+	ltype = tytree_get_base_type(ltype);
+	if (node->children[1] == NULL) //unary
+		return emitRval_unaryopr(node, irg, addr, left_addr, ltype);
+
+	addr_t right_addr = new_reg(irg);
+	tytree_node* rtype = emitRval(node->children[1], irg, right_addr);
+	rtype = tytree_get_base_type(rtype);
+	return emitRval_binopr(node, irg, addr, left_addr, ltype, right_addr, rtype);
+}
+
+static tytree_node* emitRval_id(AST_node* node, irgen* irg, addr_t addr)
 {
 	char* idstr = node->attr;
 	symbol* sym = syt_find(&(irg->syt), idstr);
 	if (sym == NULL) //있는지 찾기
-		push_err("선언되지 않은 변수를 참조하고 있습니다.\n");
-	mvar_code addr_mv = new_mvar(irg);
+		push_err(node, "선언되지 않은 변수를 참조하고 있습니다.\n");
+	addr_t addr_of_addr = new_reg(irg);
 
 	if (sym->addrtype == ADDR_ABS) //절대주소
 	{
-		ir* loadaddr_ir = irgen_push(irg, IR_LOADCONST, addr_mv);
+		ir* loadaddr_ir = irgen_push(irg, IR_LOADCONST, addr_of_addr);
 		loadaddr_ir->args[0].dec = sym->addr;
 	}
 	else if (sym->addrtype == ADDR_REL) //상대주소
 	{
-		mvar_code offset_mv = new_mvar(irg);
-		ir* loadoffset_ir = irgen_push(irg, IR_LOADCONST, offset_mv);
+		addr_t offset_addr = new_reg(irg);
+		ir* loadoffset_ir = irgen_push(irg, IR_LOADCONST, offset_addr);
 		loadoffset_ir->args[0].dec = sym->addr;
-		ir* caladdr_ir = irgen_push(irg, IR_ADD, addr_mv);
-		caladdr_ir->args[0].mvcode = EBP_MVCODE;
-		caladdr_ir->args[1].mvcode = offset_mv;
+		ir* caladdr_ir = irgen_push(irg, IR_ADD, addr_of_addr);
+		set_addr(irg, caladdr_ir, 0, EBP_ADDR);
+		set_addr(irg, caladdr_ir, 1, offset_addr);
 	}
 	
-	ir* final = irgen_push(irg, IR_LOAD, mvcode);
-	final->args[0].mvcode = tytree_to_irsize(sym->type);
-	final->args[1].mvcode = addr_mv;
+	ir* final = irgen_push(irg, IR_LOAD, addr);
+	final->args[0].dec = tytree_to_irsize(sym->type);
+	set_addr(irg, final, 1, addr_of_addr);
 	return sym->type;
 }
 
-static tytree_node* emitRval(AST_node* node, irgen* irg, mvar_code mvcode) //ret에 Rvalue를 저장해주시오
+static tytree_node* emitRval_cast(AST_node* node, irgen* irg, addr_t dest_addr)
+{
+	tytree_node* into_type = from_AST(node->children[0]);
+	*(tytree_node**)varr_push(&(irg->type_storage)) = into_type;
+
+	tytree_node* dest_type = emitRval(node->children[1], irg, dest_addr);
+
+	//준int - 준int간 캐스팅 또는 float - float간 캐스팅
+	bool into_nearint = tytree_is_nearint(into_type);
+	bool dest_nearint = tytree_is_nearint(dest_type);
+	bool into_float = tytree_get_base_type(into_type)->type == TYTR_FLOAT;
+	bool dest_float = tytree_get_base_type(dest_type)->type == TYTR_FLOAT;
+	if ((dest_nearint && into_nearint) || (dest_float && into_float))
+	{
+		ir* new = irgen_push(irg, IR_MOVE, dest_addr);
+		set_addr(irg, new, 0, dest_addr);
+		return into_type;
+	}
+
+	//(int, uint) - float간 캐스팅
+	bool into_strictly_int = tytree_is_int(into_type);
+	bool dest_strictly_int = tytree_is_int(dest_type);
+
+	if (dest_strictly_int && into_float)
+	{
+		ir* new = irgen_push(irg, IR_ITOF, dest_addr);
+		set_addr(irg, new, 0, dest_addr);
+		return into_type;
+	}
+	else if (dest_float && into_strictly_int)
+	{
+		ir* new = irgen_push(irg, IR_FTOI, dest_addr);
+		set_addr(irg, new, 0, dest_addr);
+		return into_type;
+	}
+
+	//불가능한 경우
+	push_err(node, "타입 캐스팅이 가능하지 않습니다. \n");
+}
+
+static tytree_node* emitRval_pure_assign(AST_node* node, irgen* irg, 
+	addr_t dest_addr, tytree_node* dest_type,
+	addr_t right_addr, tytree_node* rtype)
+{
+	ir* new = irgen_push(irg, IR_STORE, dest_addr);
+	new->args[0].asize = tytree_to_irsize(dest_type);
+	set_addr(irg, new, 1, right_addr);
+	return dest_type;
+}
+
+static tytree_node* emitRval_general_assign(AST_node* node, irgen* irg, addr_t dest_addr)
+{
+	addr_t left_addr = new_reg(irg);
+	tytree_node* ltype = emitLval(node->children[0], irg, left_addr);
+	addr_t right_addr = new_reg(irg);
+	tytree_node* rtype = emitRval(node->children[1], irg, right_addr);
+
+	if (node->type != AST_ASSIGN)
+	{
+		
+	}
+}
+
+static tytree_node* emitRval(AST_node* node, irgen* irg, addr_t addr) //ret에 Rvalue를 저장해주시오
 {
 	switch (node->type)
 	{
-	case AST_INT: return emitRval_literal(node, irg, mvcode, LTT_INT);
-	case AST_UINT: return emitRval_literal(node, irg, mvcode, LTT_UINT);
-	case AST_CHAR: return emitRval_literal(node, irg, mvcode, LTT_CHAR);
-	case AST_TRUE: case AST_FALSE: return emitRval_literal(node, irg, mvcode, LTT_BOOL);
-	case AST_FLOAT: return emitRval_literal(node, irg, mvcode, LTT_FLOAT);
-	case AST_STR: return emitRval_str(node, irg, mvcode);
-	case AST_ID: return emitRval_id(node, irg, mvcode);
-	default: return emitRval_binopr(node, irg, mvcode);
+	case AST_INT: return emitRval_literal(node, irg, addr, LTT_INT);
+	case AST_UINT: return emitRval_literal(node, irg, addr, LTT_UINT);
+	case AST_CHAR: return emitRval_literal(node, irg, addr, LTT_CHAR);
+	case AST_TRUE: case AST_FALSE: return emitRval_literal(node, irg, addr, LTT_BOOL);
+	case AST_FLOAT: return emitRval_literal(node, irg, addr, LTT_FLOAT);
+	case AST_STR: return emitRval_str(node, irg, addr);
+	case AST_ID: return emitRval_id(node, irg, addr);
+	case AST_CAST: return emitRval_cast(node, irg, addr);
+	case AST_ASSIGN: return emitRval_assign(node, irg, addr);
+	default: return emitRval_expr(node, irg, addr);
 	}
 }
 
@@ -361,14 +539,38 @@ static void emitNval(AST_node* node, irgen* irg)
 			break;
 		}
 		default:
-			emitRval(node, irg, new_mvar(irg));
+			emitRval(node, irg, new_reg(irg));
 	}
 	if (node->next != NULL)
 		emitNval(node->next, irg);
 }
 
+static void addr_addall(variable_arr* tracking_varr, addr_t offset)
+{
+	qword** arrayified = tracking_varr->data;
+	for (size_t i = 0; i < tracking_varr->size; i++)
+	{
+		qword* cur = arrayified[i];
+		cur->addr = (cur->addr & 0x00ffffffffffffff) + offset;
+	}
+}
+
+static void determine_addr(irgen* irg)
+{
+	addr_t code_section_size = irg->irs.size * 32LL;
+	printf("code_section_size: %lld \n", code_section_size);
+	addr_t reg_section_size = irg->reg_count * 8LL;
+	printf("reg_section_size: %lld \n", reg_section_size);
+	addr_t data_section_size = irg->section[DATA_SECTION].size;
+	printf("data_section_size: %lld \n", data_section_size);
+
+	addr_addall(irg->addr_on + REG_SECTION, code_section_size);
+	addr_addall(irg->addr_on + DATA_SECTION, code_section_size + reg_section_size);
+	addr_addall(irg->addr_on + GLOBAL_SECTION, code_section_size + reg_section_size + data_section_size);
+}
+
 void irgen_gen(irgen* irg, AST_node* root)
 {
 	emitNval(root, irg);
+	determine_addr(irg);
 }
-

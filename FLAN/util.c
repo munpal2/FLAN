@@ -11,11 +11,14 @@ void* acquire_impl(size_t sz)
 	return mem;
 }
 
-bool fpl_open(file_poller* dest, const char* filename, const char* mode)
+void fpl_open(file_poller* dest, const char* filename, const char* mode)
 {
 	dest->fp = fopen(filename, mode);
 	if (dest->fp == NULL)
-		return false;
+	{
+		printf(color_err "파일을 여는 데 실패했습니다: %s\n", filename);
+		abort();
+	}
 
 	/*대충 이 상태로 lookahead들어가면 읽혀서 나옴*/
 	dest->end[1] = FILE_BUF_SIZE;
@@ -23,8 +26,6 @@ bool fpl_open(file_poller* dest, const char* filename, const char* mode)
 	dest->page[1] = -1;
 	dest->offset = 0;
 	dest->buffer_idx = 1;
-
-	return true;
 }
 
 char fpl_lookahead(file_poller* dest, size_t n)
