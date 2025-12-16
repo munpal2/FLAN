@@ -5,7 +5,7 @@
 #define MCMD_COUNT 6
 
 const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",       "TK_STR",          "TK_ID",
-                              "TK_INVALID",     "TK_CONST",      "TK_PTR",         "TK_FUNC",        "TK_SEMICOLON",
+                              "TK_INVALID",     "TK_CONST",      "TK_PTR",         "TK_FUNC",         "TK_SEMICOLON",
                               "TK_UINT",        "TK_DECL",       "TK_FOR",         "TK_WHILE",        "TK_IF",
                               "TK_ELSE",        "TK_TRUE",       "TK_FALSE",       "TK_PLUS",         "TK_MINUS",
                               "TK_MUL",         "TK_DIV",        "TK_MOD",         "TK_NOT",          "TK_ASSIGN",
@@ -13,7 +13,7 @@ const char* token_strty[] = { "TK_END",         "TK_INT",        "TK_FLOAT",    
                               "TK_BAND",        "TK_BOR",        "TK_BNOT",        "TK_LSHIFT",       "TK_RSHIFT",
                               "TK_INC",         "TK_DEC",        "TK_PLUSEQ",      "TK_MINUSEQ",      "TK_MULEQ",
                               "TK_DIVEQ",       "TK_MODEQ",      "TK_LTE",         "TK_GTE",          "TK_LT",
-                              "TK_GT",          "TK_DOT",        "TK_ARROW",       "TK_TYPE",         "TK_SHLEQ",
+                              "TK_GT",          "TK_DOT",        "TK_ARROW",       "TK_TYINT",         "TK_SHLEQ",
                               "TK_SHREQ",       "TK_OREQ",       "TK_ANDEQ",       "TK_XOREQ",        "TK_OPEN_PAREN",
                               "TK_CLOSE_PAREN", "TK_OPEN_BRACE", "TK_CLOSE_BRACE", "TK_OPEN_BRACKET", "TK_CLOSE_BRACKET",
                               "TK_COMMA",       "TK_AS",         "TK_ARR",         "TK_OF",           "TK_COLON",
@@ -88,6 +88,11 @@ static void srctx_create(strref_context* dest, const char* str)
 {
     dest->str = str;
     dest->offset = 0;
+}
+
+void foo(token_type* tk)
+{
+    printf("%s ", token_strty[*tk]);
 }
 
 bool tknz_init(tokenizer* tknz, const char* filename)
@@ -460,9 +465,9 @@ const variable_arr* tokenize(tokenizer* tknz)
             }
             else //매크로 아님
             {
-                token* htbfind = htb_find(&(tknz->token_map), str_builder_get(&builder));
+                token_type* htbfind = htb_find(&(tknz->token_map), str_builder_get(&builder));
                 if (htbfind != NULL) //이미 보았던 것
-                    push_token(tknz, htbfind->type, str_builder_pop(&builder));
+                    push_token(tknz, *htbfind, str_builder_pop(&builder));
                 else
                     push_token(tknz, TK_ID, str_builder_pop(&builder));
             }

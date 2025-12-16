@@ -67,6 +67,19 @@ tytree_node* from_AST(AST_node* ast)
 	}
 }
 
+tytree_node* tytree_copy(tytree_node* root)
+{
+	tytree_node* ret = tytreend_create(root->type, root->len);
+	for (size_t i = 0; i < 2; i++)
+	{
+		if (root->children[i] != NULL)
+			ret->children[i] = tytree_copy(root->children[i]);
+	}
+	if (root->next != NULL)
+		ret->next = tytree_copy(root->next);
+	return ret;
+}
+
 void tytree_destroy(tytree_node* root)
 {
 	for (size_t i = 0; i < 2; i++)

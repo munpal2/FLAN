@@ -99,7 +99,7 @@ ir_access_size access_size[] = { SZ_QWORD, SZ_QWORD, SZ_BYTE,   SZ_BYTE,  SZ_QWO
 								 SZ_QWORD, SZ_QWORD, SZ_UNABLE, SZ_UNABLE };
 ir_access_size tytree_to_irsize(tytree_node* type)
 {
-	if (type->type == TYTR_CONST)
+	if (type->type == TYTR_CONST || type->type == TYTR_ARROF)
 		return tytree_to_irsize(type->children[0]);
 	return access_size[type->type];
 }
@@ -152,7 +152,7 @@ void irgen_destroy(irgen* irg)
 static void set_addr(irgen* irg, ir* dest_ir, size_t num, addr_t addr)
 {
 	dest_ir->args[num].addr = addr;
-	section_type idxof_addr_on = (addr && 0xff00000000000000LL) >> 56LL;
+	section_type idxof_addr_on = ((long long)(addr && 0xff00000000000000LL) >> 56LL);
 	if (idxof_addr_on >= CODE_SECTION) //이건 추적 안해도 됨
 		return;
 	qword** mark_dest = varr_push(irg->addr_on + idxof_addr_on);
@@ -176,9 +176,74 @@ static void emitNval(AST_node* node, irgen* irg);
 static tytree_node* emitRval(AST_node* node, irgen* irg, addr_t addr);
 static tytree_node* emitLval(AST_node* node, irgen* irg, addr_t addr);
 
+static tytree_node* emitLval_id(AST_node* node, irgen* irg, addr_t addr)
+{
+	char* idstr = node->attr;
+	symbol* sym = syt_find(&(irg->syt), idstr);
+	if (sym == NULL) //있는지 찾기
+		push_err(node, "선언되지 않은 변수를 참조하고 있습니다.\n");
+
+	if (sym->addrtype == ADDR_ABS) //절대주소
+	{
+		ir* loadaddr_ir = irgen_push(irg, IR_LOADCONST, addr);
+		loadaddr_ir->args[0].dec = sym->addr;
+	}
+	else if (sym->addrtype == ADDR_REL) //상대주소
+	{
+		addr_t offset_addr = new_reg(irg);
+		ir* loadoffset_ir = irgen_push(irg, IR_LOADCONST, offset_addr);
+		loadoffset_ir->args[0].dec = sym->addr;
+		ir* caladdr_ir = irgen_push(irg, IR_ADD, addr);
+		set_addr(irg, caladdr_ir, 0, EBP_ADDR);
+		set_addr(irg, caladdr_ir, 1, offset_addr);
+	}
+	return sym->type;
+}
+
+static tytree_node* emitLval_ref(AST_node* node, irgen* irg, addr_t addr)
+{
+	tytree_node* dest_type = emitRval(node->children[0], irg, addr);
+	return dest_type->children[0];
+}
+
+static tytree_node* emitLval_idx(AST_node* node, irgen* irg, addr_t addr)
+{
+	addr_t left_addr = new_reg(irg);
+	tytree_node* ltype = emitLval(node->children[0], irg, addr);
+	addr_t right_addr = new_reg(irg);
+	tytree_node* rtype = emitRval(node->children[1], irg, addr);
+		
+	if (tytree_get_element_type(ltype) == NULL)
+		push_err(node, "포인터 또는 배열이 아닙니다. \n");
+
+	addr_t elem_size_addr = new_reg(irg);
+	ir* new = irgen_push(irg, IR_LOADCONST, elem_size_addr);
+	addr_t elem_size = tytree_sizeof(tytree_get_element_type(ltype));
+	new->args[0].dec = elem_size;
+
+	new = irgen_push(irg, IR_MUL, right_addr);
+	set_addr(irg, new, 0, right_addr);
+	set_addr(irg, new, 1, elem_size_addr);
+		
+	new = irgen_push(irg, IR_ADD, addr);
+	set_addr(irg, new, 0, left_addr);
+	set_addr(irg, new, 1, right_addr);
+	return tytree_get_element_type(ltype);
+}
+
 static tytree_node* emitLval(AST_node* node, irgen* irg, addr_t addr) //ret에 Lvalue를 저장해주시오
 {
-
+	switch (node->type)
+	{
+	case AST_ID:
+		return emitLval_id(node, irg, addr);
+	case AST_REF:
+		return emitLval_ref(node, irg, addr);
+	case AST_IDX:
+		return emitLval_idx(node, irg, addr);
+	default:
+		push_err(node, "lvalue값이 필요합니다. \n");
+	}
 }
 
 static tytree_node* emitRval_str(AST_node* node, irgen* irg, addr_t addr)
@@ -334,6 +399,8 @@ static tytree_node* emitRval_binopr_intint(AST_node* node, irgen* irg, addr_t de
 		case AST_BOR: ir_type = IR_OR; break;
 		case AST_BXOR: ir_type = IR_XOR; break;
 		case AST_BAND: ir_type = IR_AND; break;
+		case AST_LSHIFT: ir_type = IR_LSH; break;
+		case AST_RSHIFT: ir_type = IR_RSH; break;
 		default:
 			push_err(node, "정수와 정수 사이에서 정의되지 않은 연산자입니다.\n");
 		}
@@ -402,31 +469,12 @@ static tytree_node* emitRval_expr(AST_node* node, irgen* irg, addr_t addr)
 
 static tytree_node* emitRval_id(AST_node* node, irgen* irg, addr_t addr)
 {
-	char* idstr = node->attr;
-	symbol* sym = syt_find(&(irg->syt), idstr);
-	if (sym == NULL) //있는지 찾기
-		push_err(node, "선언되지 않은 변수를 참조하고 있습니다.\n");
 	addr_t addr_of_addr = new_reg(irg);
-
-	if (sym->addrtype == ADDR_ABS) //절대주소
-	{
-		ir* loadaddr_ir = irgen_push(irg, IR_LOADCONST, addr_of_addr);
-		loadaddr_ir->args[0].dec = sym->addr;
-	}
-	else if (sym->addrtype == ADDR_REL) //상대주소
-	{
-		addr_t offset_addr = new_reg(irg);
-		ir* loadoffset_ir = irgen_push(irg, IR_LOADCONST, offset_addr);
-		loadoffset_ir->args[0].dec = sym->addr;
-		ir* caladdr_ir = irgen_push(irg, IR_ADD, addr_of_addr);
-		set_addr(irg, caladdr_ir, 0, EBP_ADDR);
-		set_addr(irg, caladdr_ir, 1, offset_addr);
-	}
-	
+	tytree_node* type = emitLval_id(node, irg, addr_of_addr);
 	ir* final = irgen_push(irg, IR_LOAD, addr);
-	final->args[0].dec = tytree_to_irsize(sym->type);
+	final->args[0].dec = tytree_to_irsize(type);
 	set_addr(irg, final, 1, addr_of_addr);
-	return sym->type;
+	return type;
 }
 
 static tytree_node* emitRval_cast(AST_node* node, irgen* irg, addr_t dest_addr)
@@ -469,6 +517,15 @@ static tytree_node* emitRval_cast(AST_node* node, irgen* irg, addr_t dest_addr)
 	push_err(node, "타입 캐스팅이 가능하지 않습니다. \n");
 }
 
+static tytree_node* emitRval_getaddr(AST_node* node, irgen* irg, addr_t dest_addr)
+{
+	tytree_node* dest_type = emitLval(node->children[0], irg, dest_addr);
+	tytree_node** ptrof_dest = varr_push(&(irg->type_storage));
+	*ptrof_dest = tytreend_create(TYTR_PTROF, 0);
+	(*ptrof_dest)->children[0] = tytree_copy(dest_type);
+	return *ptrof_dest;
+}
+
 static tytree_node* emitRval_pure_assign(AST_node* node, irgen* irg, 
 	addr_t dest_addr, tytree_node* dest_type,
 	addr_t right_addr, tytree_node* rtype)
@@ -479,17 +536,38 @@ static tytree_node* emitRval_pure_assign(AST_node* node, irgen* irg,
 	return dest_type;
 }
 
+static AST_type decomposed_type(AST_type type)
+{
+	switch (type)
+	{
+	case AST_ADDX: return AST_ADD;
+	case AST_SUBX: return AST_SUB;
+	case AST_MULX: return AST_MUL;
+	case AST_DIVX: return AST_DIV;
+	case AST_MODX: return AST_MUL;
+	case AST_ORX: return AST_BOR;
+	case AST_ANDX: return AST_BAND;
+	case AST_XORX: return AST_BXOR;
+	case AST_LSHIFTX: return AST_LSHIFT;
+	case AST_RSHIFTX: return AST_RSHIFT;
+	}
+}
+
 static tytree_node* emitRval_general_assign(AST_node* node, irgen* irg, addr_t dest_addr)
 {
-	addr_t left_addr = new_reg(irg);
-	tytree_node* ltype = emitLval(node->children[0], irg, left_addr);
-	addr_t right_addr = new_reg(irg);
-	tytree_node* rtype = emitRval(node->children[1], irg, right_addr);
-
+	tytree_node* dest_type = emitLval(node->children[0], irg, dest_addr);
 	if (node->type != AST_ASSIGN)
 	{
-		
+		AST_type old_node_type = node->type; //잠깐 속이기
+		node->type = decomposed_type(node->type);
+		addr_t calculated_addr = new_reg(irg);
+		tytree_node* calcultated_type = emitRval(node, irg, calculated_addr);
+		node->type = old_node_type;
+		return emitRval_pure_assign(node, irg, dest_addr, dest_type, calculated_addr, calcultated_type);
 	}
+	addr_t right_addr = new_reg(irg);
+	tytree_node* rtype = emitRval(node->children[1], irg, right_addr);
+	return emitRval_pure_assign(node, irg, dest_addr, dest_type, right_addr, rtype);
 }
 
 static tytree_node* emitRval(AST_node* node, irgen* irg, addr_t addr) //ret에 Rvalue를 저장해주시오
@@ -504,8 +582,21 @@ static tytree_node* emitRval(AST_node* node, irgen* irg, addr_t addr) //ret에 Rv
 	case AST_STR: return emitRval_str(node, irg, addr);
 	case AST_ID: return emitRval_id(node, irg, addr);
 	case AST_CAST: return emitRval_cast(node, irg, addr);
-	case AST_ASSIGN: return emitRval_assign(node, irg, addr);
-	default: return emitRval_expr(node, irg, addr);
+	case AST_GETADDR: return emitRval_getaddr(node, irg, addr);
+
+	case AST_ASSIGN:  case AST_ADDX:    case AST_SUBX:
+	case AST_MULX:    case AST_DIVX:    case AST_MODX:
+	case AST_ORX:     case AST_ANDX:    case AST_XORX:
+	case AST_LSHIFTX: case AST_RSHIFTX:
+		return emitRval_general_assign(node, irg, addr);
+
+	case AST_ADD:    case AST_SUB:  case AST_MUL:
+	case AST_DIV:    case AST_MOD:  case AST_BOR:
+	case AST_BAND:   case AST_BXOR: case AST_LSHIFT:
+	case AST_RSHIFT:
+		return emitRval_expr(node, irg, addr);
+	default:
+		push_err(node, "rvalue값이 필요합니다.");
 	}
 }
 

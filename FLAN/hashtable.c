@@ -22,9 +22,10 @@ static bool htb_resize(hash_table* table)
 		while (node != NULL)
 		{
 			size_t new_idx = hash(node->key) & (table->capacity - 1);
+			hash_node* old_next = node->next;
 			node->next = table->buckets[new_idx];
 			table->buckets[new_idx] = node;
-			node = node->next;
+			node = old_next;
 		}
 	}
 	free(old_buckets);

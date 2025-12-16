@@ -2,7 +2,6 @@
 #define include_fe
 #ifdef needs_decl
 decl float pi = 0.01;
-$lol
 #endif
 #define NULL 0
 #endif

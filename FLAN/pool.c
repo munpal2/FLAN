@@ -64,9 +64,10 @@ static bool pool_resize(strpool* pool)
 		while (node != NULL)
 		{
 			size_t new_idx = hash(node->str) & (pool->capacity - 1);
+			pool_node* old_next = node->next;
 			node->next = pool->buckets[new_idx];
 			pool->buckets[new_idx] = node;
-			node = node->next;
+			node = old_next;
 		}
 	}
 	free(old_buckets);

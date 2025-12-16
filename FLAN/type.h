@@ -38,6 +38,7 @@ void lit_types_destroy();
 tytree_node* tytreend_create(tytree_type type, size_t len);
 tytree_node* func_from_AST(AST_node* funcnode, size_t pidx, size_t ridx);
 tytree_node* from_AST(AST_node* ast);
+tytree_node* tytree_copy(tytree_node* root);
 void tytree_destroy(tytree_node* root);
 bool tytree_eq(tytree_node* t1, tytree_node* t2);
 long long tytree_sizeof(tytree_node* root);
