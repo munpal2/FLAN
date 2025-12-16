@@ -15,8 +15,8 @@
 |IR_AND| 10 | mvcode | mvcode | mvcode |
 |IR_OR| 11 | mvcode | mvcode | mvcode |
 |IR_XOR| 12 | mvcode | mvcode | mvcode |
-|IR_LSHF| 13 | mvcode | mvcode | mvcode |
-|IR_RSHF| 14 | mvcode | mvcode | mvcode |
+|IR_LSH| 13 | mvcode | mvcode | mvcode |
+|IR_RSH| 14 | mvcode | mvcode | mvcode |
 |IR_NOT| 15 | mvcode |  -  | mvcode |
 |IR_CMP| 16 | mvcode | mvcode | mvcode |
 |IR_GT| 17 | mvcode | mvcode | mvcode |
@@ -38,4 +38,6 @@
 |IR_ITOF|33 | mvcode |  -  | mvcode |
 |IR_FTOI|34 | mvcode |  -  | mvcode |
 |IR_NEGF|35 | mvcode |  -  | mvcode |
-|IR_CMPF|36 | mvcode | mvcode | mvcode |
+|IR_GTF |36 | mvcode | mvcode | mvcode |
+|IR_LTF |37 | mvcode | mvcode | mvcode |
+|IR_MEMCPY | 38 | mvcode | size | mvcode |

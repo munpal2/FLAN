@@ -60,9 +60,6 @@
     <ClInclude Include="pool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include.fe">
-      <Filter>리소스 파일\test</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\AST_spec.md">
@@ -75,6 +72,9 @@
       <Filter>리소스 파일\docs</Filter>
     </None>
     <None Include="irtest.fe">
+      <Filter>리소스 파일\test</Filter>
+    </None>
+    <None Include="test\include.fe">
       <Filter>리소스 파일\test</Filter>
     </None>
   </ItemGroup>

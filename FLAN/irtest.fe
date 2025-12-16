@@ -1,7 +1,7 @@
 #define needs_decl
 {
-#include include.fe
-#include include.fe
+#include test/include.fe
+#include test/include.fe
 	{
 		decl int a = 0, b = 1;
 		2 * 3;
@@ -9,6 +9,10 @@
 	}
 	decl float b = 3.14;
 	b / 1.23 + pi;
-	decl int p = 23;
-	p + NULL;
+	decl ptr of int p;
+	p ^ NULL;
+	p + (int)b;
+	"asdf" + 2;
+	"sdddfdfff";
+	"asdf";
 }

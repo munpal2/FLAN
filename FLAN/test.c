@@ -80,7 +80,6 @@ static void node_show(AST_node* node, size_t depth, const char* idx)
 
 typedef enum ir_arg_type
 {
-	MVCODE,
 	ADDR,
 	RAW,
 	ASIZE,
@@ -88,62 +87,52 @@ typedef enum ir_arg_type
 } ir_arg_type;
 
 ir_arg_type ir_arg_types[37][3] = {
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, NONE, NONE},
-	{MVCODE, NONE, NONE},
-	{ASIZE, MVCODE, MVCODE},
-	{ASIZE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, NONE, ADDR},
+	{ADDR, NONE, NONE},
+	{ADDR, NONE, NONE},
+	{ASIZE, ADDR, ADDR},
+	{ASIZE, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, NONE, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
 	{NONE, ADDR, NONE},
-	{MVCODE, ADDR, NONE},
-	{MVCODE, ADDR, NONE},
+	{ADDR, ADDR, NONE},
+	{ADDR, ADDR, NONE},
 	{ADDR, NONE, NONE},
 	{NONE, NONE, NONE},
-	{RAW, NONE, MVCODE},
-	{MVCODE, NONE, NONE},
-	{MVCODE, RAW, MVCODE},
-	{RAW, NONE, MVCODE}, //load_const
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, NONE, MVCODE},
-	{MVCODE, MVCODE, MVCODE},
+	{RAW, NONE, ADDR},
+	{ADDR, NONE, NONE},
+	{ADDR, RAW, ADDR},
+	{RAW, NONE, ADDR}, //load_const
+	{ADDR, NONE, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, ADDR, ADDR},
+	{ADDR, NONE, ADDR},
+	{ADDR, NONE, ADDR},
+	{ADDR, NONE, ADDR},
+	{ADDR, ADDR, ADDR},
 };
 
 static void IR_arg_show(qword arg, ir_arg_type arg_type)
 {
 	switch (arg_type)
 	{
-		case MVCODE:
-		{
-			if (arg.mvcode == EBP_MVCODE)
-				printf("EBP");
-			else if (arg.mvcode == ESP_MVCODE)
-				printf("ESP");
-			else
-				printf("T%llu", arg.mvcode - 2);
-			break;
-		}
 		case ADDR:
 		{
-			printf("0x%llx", arg.addr);
+			printf("0x%llx(%lld)", arg.addr, arg.addr);
 			break;
 		}
 		case RAW:

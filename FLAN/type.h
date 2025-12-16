@@ -66,4 +66,10 @@ inline bool tytree_is_ptr(tytree_node* type)
 	return (type->type == TYTR_PTROF);
 }// 타입이 포인터인지 확인
 
+inline bool tytree_is_int(tytree_node* type)
+{
+	type = tytree_get_base_type(type);
+	return ((type->type == TYTR_INT) || (type->type == TYTR_UINT));
+}
+
 bool tytree_is_nearint(tytree_node* type);

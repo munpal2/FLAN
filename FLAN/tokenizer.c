@@ -165,7 +165,7 @@ static fileref_context* frctx_top(tokenizer* tknz)
         frctx_destroy(frctx);
         varr_pop(&(tknz->fileref_stack));
     }
-    return varr_back(&(tknz->fileref_stack)); //이러면 망하지 않을까?
+    return varr_back(&(tknz->fileref_stack)); 
 }
 
 static void push_err(tokenizer* tknz, const char* str)
